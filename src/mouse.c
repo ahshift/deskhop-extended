@@ -14,10 +14,16 @@
 
 #define MACOS_SWITCH_MOVE_X 10
 #define MACOS_SWITCH_MOVE_COUNT 5
+#define WRAP_PUSH_COUNT 8
 #define ACCEL_POINTS 7
 
 uint16_t get_jump_threshold(output_t *output, enum screen_pos_e direction) {
     const uint16_t NO_JUMP_THRESHOLD = 0;
+
+    /* With wrap-around, going away from the border on the last screen is a jump to another pc too */
+    if (global_state.config.wrap_around && output->pos == direction &&
+        output->screen_index >= output->screen_count)
+        return global_state.config.jump_threshold;
 
     /* If on non-main local screen, every possible switch is local */
     if (output->screen_index > 1)
@@ -290,6 +296,46 @@ void switch_virtual_desktop(device_t *state, output_t *output, int new_index, in
     reset_edge_tap(state);
 }
 
+/* Windows maps absolute coordinates onto its main screen only, so its other screens are reached
+   with relative movement: put the cursor on the main screen's edge, then push it until it stops
+   at the far side of the desktop, which is the last screen */
+void push_to_far_side(device_t *state, int direction) {
+    mouse_report_t edge = {.x = state->pointer_x, .y = state->pointer_y, .mode = ABSOLUTE};
+    mouse_report_t push = {.x = (direction == LEFT) ? -MAX_SCREEN_COORD : MAX_SCREEN_COORD, .mode = RELATIVE};
+
+    output_mouse_report(&edge, state);
+
+    for (int i = 0; i < WRAP_PUSH_COUNT; i++)
+        output_mouse_report(&push, state);
+}
+
+/* Past the outer edge of the last screen, wrap around to the far side of the other computer. Both
+   cursors move against the direction of travel: this one back onto its main screen, where every
+   other way out leaves it, and the other one out onto its last screen. */
+void wrap_to_another_pc(device_t *state, output_t *output, int direction) {
+    output_t *other = &state->config.output[1 - state->active_output];
+    int back        = (direction == LEFT) ? RIGHT : LEFT;
+
+    /* A Mac crosses its screens one at a time. Windows gets there with the park report, which is
+       absolute and so lands on its main screen. */
+    if (output->os == MACOS)
+        for (uint32_t i = output->screen_index; i > 1; i--)
+            switch_virtual_desktop_macos(state, back);
+
+    output->screen_index = 1;
+    switch_to_another_pc(state, output, 1 - state->active_output, direction);
+
+    if (other->os == MACOS)
+        for (uint32_t i = other->screen_index; i < other->screen_count; i++)
+            switch_virtual_desktop_macos(state, back);
+
+    else if (other->os == WINDOWS && other->screen_count > 1)
+        push_to_far_side(state, back);
+
+    other->screen_index   = other->screen_count;
+    state->relative_mouse = (other->os == WINDOWS && other->screen_count > 1);
+}
+
 /* Returns true if an actual-output switch is allowed to proceed right now.
 
    When the "double tap" feature is enabled, the first time the cursor presses
@@ -363,6 +409,15 @@ void do_screen_switch(device_t *state, int direction) {
     /* We want to jump away from the other computer, only possible if there is another screen to jump to */
     else if (output->screen_index < output->screen_count)
         switch_virtual_desktop(state, output, output->screen_index + 1, direction);
+
+    /* ... or wrap around to the far side of the other computer, unless a mouse button is held */
+    else if (state->config.wrap_around && !state->mouse_buttons) {
+        /* A jump to the other computer, so the double tap applies here as at the border. */
+        if (!edge_double_tap_ready(state, direction))
+            return;
+
+        wrap_to_another_pc(state, output, direction);
+    }
 }
 
 static inline bool extract_value(bool uses_id, int32_t *dst, report_val_t *src, uint8_t *raw_report, int len) {

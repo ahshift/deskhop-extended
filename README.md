@@ -69,6 +69,14 @@ configuration.</em></p>
 
 <p align="center"><img src="img/config-dtap.png" alt="The edge double-tap settings on the config page"></p>
 
+- **Wrap around at the outer edges** - optional: pushing the pointer past the outer edge of the
+  outermost screen, the side facing away from the other computer, takes it to the far edge of the
+  other computer's outermost screen, so it can keep going in one direction and cycle between the
+  two. Works with multiple screens per output: a Mac is stepped across its screens the way moving
+  between them does, and Windows is placed on its main screen and pushed out to its last one. Off
+  by default, set under Mouse on the page or in `src/include/user_config.h`; the jump threshold
+  and the edge double-tap apply as they do at the border.
+
 - **The status LED can be told to go dark** - the LED marking the active board, a light on all
   night if your desk shares a room with a bed, can now put itself out after a set idle time, a set
   time since the output last changed, or both on their own timers. Off by default, and config

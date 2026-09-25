@@ -142,6 +142,24 @@
 #define SWITCH_DOUBLE_TAP_MARGIN 1000
 
 /**================================================== *
+ * ==================  Wrap Around ================== *
+ * ================================================== *
+ *
+ * If enabled, pushing the mouse past the outer edge of your outermost screen
+ * (the one facing away from the other computer) takes it to the far edge of
+ * the other computer's outermost screen, so you can keep going in the same
+ * direction. Works with multiple screens per output, using the same Mac and
+ * Windows workarounds. JUMP_THRESHOLD and the edge double-tap apply to this
+ * jump too.
+ *
+ * WRAP_AROUND: [0, 1] - 1 means the outer edges lead to the other computer
+ *                       0 means the mouse stops at the outer edges
+ *
+ * */
+
+#define WRAP_AROUND 0
+
+/**================================================== *
  * ==============  Screensaver Config  ============== *
  * ================================================== *
  *

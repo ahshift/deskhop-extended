@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Build and run the host-side tests. See test_config_store.c, test_hotkeys.c and test_mouse.c.
+# Build and run the host-side tests. See test_config_store.c, test_hotkeys.c, test_mouse.c and
+# test_wrap_around.c.
 set -euo pipefail
 cd "$(dirname "$0")"
 root="$(git rev-parse --show-toplevel)"
@@ -36,6 +37,12 @@ gcc -std=c11 -Wall -Wextra -Wno-unused-parameter -g -fsanitize=address,undefined
     -I shim/sdk -I "$out/sdk" -I "$root/src/include" \
     test_mouse.c "$root/src/mouse.c" -lm -o "$out/test_mouse"
 
+# The same file again for the outer edge switch, with its own stand-ins for what it reaches.
+gcc -std=c11 -Wall -Wextra -Wno-unused-parameter -g -fsanitize=address,undefined \
+    -I shim/sdk -I "$out/sdk" -I "$root/src/include" \
+    test_wrap_around.c "$root/src/mouse.c" -lm -o "$out/test_wrap_around"
+
 "$out/test_config_store"
 "$out/test_hotkeys"
 "$out/test_mouse"
+"$out/test_wrap_around"

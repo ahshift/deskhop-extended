@@ -175,9 +175,9 @@ VALUES = {
     # Output B - Windows, two screens on the right, Pong screensaver once idle.
     41: 2, 42: 20, 43: 20, 44: 0, 45: 32767, 46: 3, 47: 2, 48: 3, 49: 1, 50: 1,
     51: 300_000_000, 52: 600_000_000,
-    # Shared. 72 (boot-protocol keyboard) and 83 (edge double-tap) are this fork's additions;
-    # 87 is which output the page draws on the left.
-    71: 0, 72: 1, 73: 1, 75: 0, 76: 0, 77: 0, 83: 1, 84: 300, 85: 1000, 87: 0,
+    # Shared. 72 (boot-protocol keyboard), 83 (edge double-tap) and 105 (wrap-around) are
+    # this fork's additions; 87 is which output the page draws on the left.
+    71: 0, 72: 1, 73: 1, 75: 0, 76: 0, 77: 0, 83: 1, 84: 300, 85: 1000, 87: 0, 105: 0,
     # Status LED: both timers, so the LED stays lit while that computer is being used and
     # for a moment after a switch. Mode 3 is also the one that poses the section best -
     # it is the only one with neither timer greyed out.

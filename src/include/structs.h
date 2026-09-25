@@ -105,6 +105,8 @@ typedef struct {
        key-value page keyed by api_field_map (config_store.c), and a page from before
        that format is read as config_v9_t (config.h), which is frozen. Fields may be
        appended here; each one needs an api_field_map entry to be stored at all. */
+
+    uint8_t wrap_around;    /* Past a screen's outer edge, cross to the other computer's far edge */
 } config_t;
 
 
