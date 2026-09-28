@@ -78,6 +78,16 @@ configuration.</em></p>
   and the edge double-tap apply as they do at the border.
   [248f32d](https://github.com/mglushko/deskhop-extended/commit/248f32d)
 
+- **Same speed on every screen** - optional: Speed X and Y move the pointer a share of the screen,
+  so the same setting moves it further on a bigger one. On a Windows computer's extra screens,
+  where Windows moves the pointer and the board only follows it, that share also drifted from where
+  the pointer really was, and wrapping around left before it reached the outer edge. With Uniform
+  speed on, a count of mouse movement moves the pointer the same number of pixels on every screen,
+  from a resolution picked on each screen in the Arrangement diagram, and a Windows extra screen is
+  sent those pixels, so its outer edge is the real one. Off by default. Leave Windows at its default
+  pointer speed with Enhance pointer precision off; on a Mac, pick each screen's "looks like" size,
+  and on Linux, one screen the size of the whole desktop.
+
 - **The status LED can be told to go dark** - the LED marking the active board, a light on all
   night if your desk shares a room with a bed, can now put itself out after a set idle time, a set
   time since the output last changed, or both on their own timers. Off by default, and config

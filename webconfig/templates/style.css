@@ -217,7 +217,7 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
 
 .diag { width: 100%; position: relative; min-height: 104px; display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; }
 .mon { position: relative; z-index: 1; flex: 0 0 auto; width: calc((100% - 16px) / 3); display: flex; flex-direction: column; align-items: center; }
-.scr { position: relative; width: 100%; aspect-ratio: 16 / 10; border: 1.5px solid var(--fg); border-radius: 5px; background: var(--scr); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.scr { position: relative; width: 100%; aspect-ratio: 16 / 10; border: 1.5px solid var(--fg); border-radius: 5px; background: var(--scr); display: flex; flex-direction: column; gap: 3px; align-items: center; justify-content: center; overflow: hidden; }
 .scr-main { background: var(--scr-main); }
 .scr-n { font-size: 14px; font-weight: 700; }
 .neck { width: 3px; height: 7px; background: var(--fg); }
@@ -240,6 +240,24 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
   font-size: 14px; text-align: right; color: var(--fg); background: #fff;
   border: 1px solid var(--bd); border-radius: 4px;
 }
+/* Each screen's resolution, for uniform speed, picked on the screen in the diagram; one no
+   preset has is typed into a row under it. */
+.scr .res-pre {
+  max-width: calc(100% - 10px); height: 20px; padding: 0 2px;
+  font-size: 10.5px; color: var(--fg); background: #fff;
+  border: 1px solid var(--bd); border-radius: 3px;
+}
+.res-custom { width: 100%; display: grid; gap: 6px; }
+.res-custom:has(.res-row:not([hidden])) { margin-bottom: 8px; }
+.res-row { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+.res-row[hidden] { display: none; }
+.res-row .val { flex: 1; }
+.res-row input {
+  width: 72px; height: 30px; padding: 0 6px;
+  font-size: 14px; text-align: right; color: var(--fg); background: #fff;
+  border: 1px solid var(--bd); border-radius: 4px;
+}
+.res-x { color: var(--muted); }
 .kbd {
   font-family: ui-monospace, Menlo, monospace; font-size: 11px; font-weight: 400;
   padding: 1px 5px; white-space: nowrap; color: var(--fg); background: #f6f9fb;

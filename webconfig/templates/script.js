@@ -624,6 +624,8 @@ function syncControl(element) {
     refreshSwitching();
   else if (element.dataset.n === 'ledmode')
     refreshLed();
+  else if (element.dataset.n === 'uniform')
+    refreshUniform();
 
   if (element.hasAttribute('data-fw-ver'))
     refreshVersions();
@@ -668,6 +670,9 @@ function renderView(view, element) {
     view.disabled = (parseInt(value, 10) || 0) === HOTKEY_OFF;
   } else if (list.contains('swap')) {
     view.setAttribute('aria-pressed', value != 0);
+  } else if (list.contains('pcts')) {
+    /* Uniform speed, pixels per count in percent. */
+    view.textContent = `${parseInt(value, 10) || 0}%`;
   } else if (list.contains('pctv')) {
     /* Raw screen coordinates mean little on their own, so the share of the screen
        is spelled out beside them. One decimal, because the bottom of the range
@@ -734,6 +739,31 @@ function refreshOutput(output) {
     band.hidden = i !== bandIndex;
     band.style.top = pct(top) + '%';
     band.style.height = Math.max(2, pct(bottom - top)) + '%';
+  });
+
+  /* Resolution pickers, one on each screen in the diagram. The diagram numbers screens left
+     to right and the firmware counts them out from the border, so each picker is told which
+     screen it sets. It shows that screen's resolution, or Custom where no preset has it or
+     Custom was picked, and a screen on Custom gets a row under the diagram to type it into,
+     named by its number in the diagram. */
+  document.querySelectorAll(`.res-row[data-o="${output}"]`).forEach(row => { row.hidden = true; });
+
+  diagram.querySelectorAll('.res-pre').forEach(pick => {
+    const mon = Number(pick.dataset.mon);
+
+    if (mon >= count)
+      return;
+
+    const screen = left ? count - mon : mon + 1;
+    const size = `${apiNumber(output, 'w' + screen, 0)}x${apiNumber(output, 'h' + screen, 0)}`;
+    const preset = [...pick.options].some(option => option.value === size);
+    const row = document.querySelector(`.res-row[data-o="${output}"][data-s="${screen}"]`);
+
+    pick.dataset.s = screen;
+    pick.value = (preset && !customScreens.has(output + screen)) ? size : 'custom';
+
+    row.hidden = pick.value !== 'custom';
+    row.querySelector('.res-n').textContent = mon + 1;
   });
 
   const edge = left ? 'right' : 'left';
@@ -820,6 +850,81 @@ function refreshLed() {
     part.classList.toggle('off', off);
     part.querySelectorAll('button, input').forEach(control => { control.disabled = off; });
   });
+}
+
+/* Uniform speed takes over from Speed X and Y, so whichever is not in use dims, keeping its
+   values: saveHandler writes every field, dimmed or not. */
+function refreshUniform() {
+  const master = document.querySelector('.api[data-n="uniform"]');
+  const on = !!(master && master.checked);
+
+  document.querySelectorAll('.uni-part').forEach(part => {
+    part.classList.toggle('off', !on);
+    part.querySelectorAll('button, input, select').forEach(control => { control.disabled = !on; });
+  });
+
+  document.querySelectorAll('.spd-part').forEach(part => {
+    part.classList.toggle('off', on);
+    part.querySelectorAll('button, input').forEach(control => { control.disabled = on; });
+  });
+
+  document.querySelectorAll('.spd-note').forEach(note => { note.hidden = !on; });
+
+  /* The pickers sit on the screens in the diagram rather than inside a part of their own. */
+  document.querySelectorAll('.res-pre').forEach(pick => {
+    pick.disabled = !on;
+    pick.classList.toggle('off', !on);
+  });
+}
+
+/* Screens Custom was picked for, by output and firmware screen number, so their rows stay open
+   while what they hold still matches a preset. Page state only. */
+const customScreens = new Set();
+
+/* A preset fills in both numbers. Custom opens the screen's row for them to be typed. */
+function resolutionPicked(event) {
+  const pick = event.target;
+
+  if (!pick.classList.contains('res-pre'))
+    return;
+
+  const output = pick.dataset.o;
+  const screen = pick.dataset.s;
+
+  if (pick.value === 'custom') {
+    customScreens.add(output + screen);
+    refreshOutput(output);
+    apiValue(output, 'w' + screen).focus();
+    return;
+  }
+
+  const [width, height] = pick.value.split('x');
+
+  customScreens.delete(output + screen);
+  setApi(apiValue(output, 'w' + screen), width);
+  setApi(apiValue(output, 'h' + screen), height);
+  refreshOutput(output);
+}
+
+/* A resolution is typed straight into its .api field. The firmware reads anything under 64
+   as its default, so an empty or stray value goes back to what it was, and the rest is kept
+   within what the field offers. Capture phase, like coordChanged, so the value is right
+   before anything else reads it. */
+function resolutionTyped(event) {
+  const field = event.target;
+
+  if (!field.classList.contains('res-in'))
+    return;
+
+  let value = Math.round(Number(field.value)) || Number(field.getAttribute('fetched-value'))
+              || (field.dataset.n.startsWith('w') ? 1920 : 1080);
+
+  value = Math.max(64, Math.min(16384, value));
+
+  if (String(value) !== field.value) {
+    field.value = value;
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+  }
 }
 
 function useFullEdge(output) {
@@ -1324,7 +1429,9 @@ window.addEventListener('load', function () {
 
   panel.addEventListener('click', panelClick);
   panel.addEventListener('change', coordChanged, true);
+  panel.addEventListener('change', resolutionTyped, true);
   panel.addEventListener('change', secondsChanged);
+  panel.addEventListener('change', resolutionPicked);
 
   /* Redraw on every value change, whether it came from the device or an edit.
      Only edits mark the form dirty. */
@@ -1362,6 +1469,7 @@ window.addEventListener('load', function () {
   refreshOutput('A');
   refreshOutput('B');
   refreshSwitching();
+  refreshUniform();
   refreshLed();
   setConnected(false);
 });

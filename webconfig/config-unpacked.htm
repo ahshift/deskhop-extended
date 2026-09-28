@@ -26,6 +26,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -252,7 +253,7 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
 
 .diag { width: 100%; position: relative; min-height: 104px; display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; }
 .mon { position: relative; z-index: 1; flex: 0 0 auto; width: calc((100% - 16px) / 3); display: flex; flex-direction: column; align-items: center; }
-.scr { position: relative; width: 100%; aspect-ratio: 16 / 10; border: 1.5px solid var(--fg); border-radius: 5px; background: var(--scr); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.scr { position: relative; width: 100%; aspect-ratio: 16 / 10; border: 1.5px solid var(--fg); border-radius: 5px; background: var(--scr); display: flex; flex-direction: column; gap: 3px; align-items: center; justify-content: center; overflow: hidden; }
 .scr-main { background: var(--scr-main); }
 .scr-n { font-size: 14px; font-weight: 700; }
 .neck { width: 3px; height: 7px; background: var(--fg); }
@@ -275,6 +276,24 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
   font-size: 14px; text-align: right; color: var(--fg); background: #fff;
   border: 1px solid var(--bd); border-radius: 4px;
 }
+/* Each screen's resolution, for uniform speed, picked on the screen in the diagram; one no
+   preset has is typed into a row under it. */
+.scr .res-pre {
+  max-width: calc(100% - 10px); height: 20px; padding: 0 2px;
+  font-size: 10.5px; color: var(--fg); background: #fff;
+  border: 1px solid var(--bd); border-radius: 3px;
+}
+.res-custom { width: 100%; display: grid; gap: 6px; }
+.res-custom:has(.res-row:not([hidden])) { margin-bottom: 8px; }
+.res-row { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+.res-row[hidden] { display: none; }
+.res-row .val { flex: 1; }
+.res-row input {
+  width: 72px; height: 30px; padding: 0 6px;
+  font-size: 14px; text-align: right; color: var(--fg); background: #fff;
+  border: 1px solid var(--bd); border-radius: 4px;
+}
+.res-x { color: var(--muted); }
 .kbd {
   font-family: ui-monospace, Menlo, monospace; font-size: 11px; font-weight: 400;
   padding: 1px 5px; white-space: nowrap; color: var(--fg); background: #f6f9fb;
@@ -699,26 +718,90 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
 </div><input class="api " type="hidden" id="k17" data-key="17" data-type="uint8" fetched-value="" data-o="A" data-n="side" >
               </div>
             </div>
-
             <div class="diag" data-o="A">
               <div class="mon">
-                <div class="scr"><span class="scr-n">1</span><i class="aband"></i></div>
+                <div class="scr"><span class="scr-n">1</span><i class="aband"></i>
+                  <select class="res-pre" data-o="A" data-mon="0" aria-label="Resolution of screen 1">
+                    <option value="1440x900">1440&times;900</option>
+                    <option value="1512x982">1512&times;982</option>
+                    <option value="1728x1117">1728&times;1117</option>
+                    <option value="1920x1080">1920&times;1080</option>
+                    <option value="1920x1200">1920&times;1200</option>
+                    <option value="2560x1080">2560&times;1080</option>
+                    <option value="2560x1440">2560&times;1440</option>
+                    <option value="2560x1600">2560&times;1600</option>
+                    <option value="3440x1440">3440&times;1440</option>
+                    <option value="3840x2160">3840&times;2160</option>
+                    <option value="5120x1440">5120&times;1440</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
                 <div class="neck"></div>
                 <div class="foot"></div>
               </div>
               <div class="mon">
-                <div class="scr"><span class="scr-n">2</span><i class="aband"></i></div>
+                <div class="scr"><span class="scr-n">2</span><i class="aband"></i>
+                  <select class="res-pre" data-o="A" data-mon="1" aria-label="Resolution of screen 2">
+                    <option value="1440x900">1440&times;900</option>
+                    <option value="1512x982">1512&times;982</option>
+                    <option value="1728x1117">1728&times;1117</option>
+                    <option value="1920x1080">1920&times;1080</option>
+                    <option value="1920x1200">1920&times;1200</option>
+                    <option value="2560x1080">2560&times;1080</option>
+                    <option value="2560x1440">2560&times;1440</option>
+                    <option value="2560x1600">2560&times;1600</option>
+                    <option value="3440x1440">3440&times;1440</option>
+                    <option value="3840x2160">3840&times;2160</option>
+                    <option value="5120x1440">5120&times;1440</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
                 <div class="neck"></div>
                 <div class="foot"></div>
               </div>
               <div class="mon">
-                <div class="scr"><span class="scr-n">3</span><i class="aband"></i></div>
+                <div class="scr"><span class="scr-n">3</span><i class="aband"></i>
+                  <select class="res-pre" data-o="A" data-mon="2" aria-label="Resolution of screen 3">
+                    <option value="1440x900">1440&times;900</option>
+                    <option value="1512x982">1512&times;982</option>
+                    <option value="1728x1117">1728&times;1117</option>
+                    <option value="1920x1080">1920&times;1080</option>
+                    <option value="1920x1200">1920&times;1200</option>
+                    <option value="2560x1080">2560&times;1080</option>
+                    <option value="2560x1440">2560&times;1440</option>
+                    <option value="2560x1600">2560&times;1600</option>
+                    <option value="3440x1440">3440&times;1440</option>
+                    <option value="3840x2160">3840&times;2160</option>
+                    <option value="5120x1440">5120&times;1440</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
                 <div class="neck"></div>
                 <div class="foot"></div>
               </div>
             </div>
 
             <div class="cap" data-o="A"></div>
+            <div class="res-custom uni-part">
+              <div class="res-row" data-o="A" data-s="1" hidden>
+                <span class="val">Screen <span class="res-n"></span></span>
+                <input class="api res-in" type="number" id="k30" data-key="30" data-type="uint16" fetched-value="" data-o="A" data-n="w1" min="64" max="16384" step="1" aria-label="Width in pixels">
+                <span class="res-x">&times;</span>
+                <input class="api res-in" type="number" id="k31" data-key="31" data-type="uint16" fetched-value="" data-o="A" data-n="h1" min="64" max="16384" step="1" aria-label="Height in pixels">
+              </div>
+              <div class="res-row" data-o="A" data-s="2" hidden>
+                <span class="val">Screen <span class="res-n"></span></span>
+                <input class="api res-in" type="number" id="k32" data-key="32" data-type="uint16" fetched-value="" data-o="A" data-n="w2" min="64" max="16384" step="1" aria-label="Width in pixels">
+                <span class="res-x">&times;</span>
+                <input class="api res-in" type="number" id="k33" data-key="33" data-type="uint16" fetched-value="" data-o="A" data-n="h2" min="64" max="16384" step="1" aria-label="Height in pixels">
+              </div>
+              <div class="res-row" data-o="A" data-s="3" hidden>
+                <span class="val">Screen <span class="res-n"></span></span>
+                <input class="api res-in" type="number" id="k34" data-key="34" data-type="uint16" fetched-value="" data-o="A" data-n="w3" min="64" max="16384" step="1" aria-label="Width in pixels">
+                <span class="res-x">&times;</span>
+                <input class="api res-in" type="number" id="k35" data-key="35" data-type="uint16" fetched-value="" data-o="A" data-n="h3" min="64" max="16384" step="1" aria-label="Height in pixels">
+              </div>
+            </div>
 
             <div class="align">
               <div class="rowb">
@@ -765,26 +848,90 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
 </div><input class="api " type="hidden" id="k47" data-key="47" data-type="uint8" fetched-value="" data-o="B" data-n="side" >
               </div>
             </div>
-
             <div class="diag" data-o="B">
               <div class="mon">
-                <div class="scr"><span class="scr-n">1</span><i class="aband"></i></div>
+                <div class="scr"><span class="scr-n">1</span><i class="aband"></i>
+                  <select class="res-pre" data-o="B" data-mon="0" aria-label="Resolution of screen 1">
+                    <option value="1440x900">1440&times;900</option>
+                    <option value="1512x982">1512&times;982</option>
+                    <option value="1728x1117">1728&times;1117</option>
+                    <option value="1920x1080">1920&times;1080</option>
+                    <option value="1920x1200">1920&times;1200</option>
+                    <option value="2560x1080">2560&times;1080</option>
+                    <option value="2560x1440">2560&times;1440</option>
+                    <option value="2560x1600">2560&times;1600</option>
+                    <option value="3440x1440">3440&times;1440</option>
+                    <option value="3840x2160">3840&times;2160</option>
+                    <option value="5120x1440">5120&times;1440</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
                 <div class="neck"></div>
                 <div class="foot"></div>
               </div>
               <div class="mon">
-                <div class="scr"><span class="scr-n">2</span><i class="aband"></i></div>
+                <div class="scr"><span class="scr-n">2</span><i class="aband"></i>
+                  <select class="res-pre" data-o="B" data-mon="1" aria-label="Resolution of screen 2">
+                    <option value="1440x900">1440&times;900</option>
+                    <option value="1512x982">1512&times;982</option>
+                    <option value="1728x1117">1728&times;1117</option>
+                    <option value="1920x1080">1920&times;1080</option>
+                    <option value="1920x1200">1920&times;1200</option>
+                    <option value="2560x1080">2560&times;1080</option>
+                    <option value="2560x1440">2560&times;1440</option>
+                    <option value="2560x1600">2560&times;1600</option>
+                    <option value="3440x1440">3440&times;1440</option>
+                    <option value="3840x2160">3840&times;2160</option>
+                    <option value="5120x1440">5120&times;1440</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
                 <div class="neck"></div>
                 <div class="foot"></div>
               </div>
               <div class="mon">
-                <div class="scr"><span class="scr-n">3</span><i class="aband"></i></div>
+                <div class="scr"><span class="scr-n">3</span><i class="aband"></i>
+                  <select class="res-pre" data-o="B" data-mon="2" aria-label="Resolution of screen 3">
+                    <option value="1440x900">1440&times;900</option>
+                    <option value="1512x982">1512&times;982</option>
+                    <option value="1728x1117">1728&times;1117</option>
+                    <option value="1920x1080">1920&times;1080</option>
+                    <option value="1920x1200">1920&times;1200</option>
+                    <option value="2560x1080">2560&times;1080</option>
+                    <option value="2560x1440">2560&times;1440</option>
+                    <option value="2560x1600">2560&times;1600</option>
+                    <option value="3440x1440">3440&times;1440</option>
+                    <option value="3840x2160">3840&times;2160</option>
+                    <option value="5120x1440">5120&times;1440</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
                 <div class="neck"></div>
                 <div class="foot"></div>
               </div>
             </div>
 
             <div class="cap" data-o="B"></div>
+            <div class="res-custom uni-part">
+              <div class="res-row" data-o="B" data-s="1" hidden>
+                <span class="val">Screen <span class="res-n"></span></span>
+                <input class="api res-in" type="number" id="k60" data-key="60" data-type="uint16" fetched-value="" data-o="B" data-n="w1" min="64" max="16384" step="1" aria-label="Width in pixels">
+                <span class="res-x">&times;</span>
+                <input class="api res-in" type="number" id="k61" data-key="61" data-type="uint16" fetched-value="" data-o="B" data-n="h1" min="64" max="16384" step="1" aria-label="Height in pixels">
+              </div>
+              <div class="res-row" data-o="B" data-s="2" hidden>
+                <span class="val">Screen <span class="res-n"></span></span>
+                <input class="api res-in" type="number" id="k62" data-key="62" data-type="uint16" fetched-value="" data-o="B" data-n="w2" min="64" max="16384" step="1" aria-label="Width in pixels">
+                <span class="res-x">&times;</span>
+                <input class="api res-in" type="number" id="k63" data-key="63" data-type="uint16" fetched-value="" data-o="B" data-n="h2" min="64" max="16384" step="1" aria-label="Height in pixels">
+              </div>
+              <div class="res-row" data-o="B" data-s="3" hidden>
+                <span class="val">Screen <span class="res-n"></span></span>
+                <input class="api res-in" type="number" id="k64" data-key="64" data-type="uint16" fetched-value="" data-o="B" data-n="w3" min="64" max="16384" step="1" aria-label="Width in pixels">
+                <span class="res-x">&times;</span>
+                <input class="api res-in" type="number" id="k65" data-key="65" data-type="uint16" fetched-value="" data-o="B" data-n="h3" min="64" max="16384" step="1" aria-label="Height in pixels">
+              </div>
+            </div>
 
             <div class="align">
               <div class="rowb">
@@ -838,14 +985,18 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
             </div>
             <span class="hint">Where the pointer sits on this computer once you've switched away.</span>
 
-            <div class="fld">
+            <div class="spd-part">
+              <div class="fld">
   <div class="rowb"><span class="k">Speed X =</span><span class="val " data-for="k12"></span></div>
   <input class="api " type="range" id="k12" data-key="12" data-type="int32" fetched-value="" data-o="A" data-n="spx" min="1" max="100" aria-label="Speed X">
 </div>
-            <div class="fld">
+              <div class="fld">
   <div class="rowb"><span class="k">Speed Y =</span><span class="val " data-for="k13"></span></div>
   <input class="api " type="range" id="k13" data-key="13" data-type="int32" fetched-value="" data-o="A" data-n="spy" min="1" max="100" aria-label="Speed Y">
 </div>
+            </div>
+            <span class="hint spd-note" hidden>Uniform speed is on, so its speed under Shared
+              settings moves the pointer on every screen instead.</span>
 
           </div>
           <div class="fld">
@@ -866,14 +1017,18 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
             </div>
             <span class="hint">Where the pointer sits on this computer once you've switched away.</span>
 
-            <div class="fld">
+            <div class="spd-part">
+              <div class="fld">
   <div class="rowb"><span class="k">Speed X =</span><span class="val " data-for="k42"></span></div>
   <input class="api " type="range" id="k42" data-key="42" data-type="int32" fetched-value="" data-o="B" data-n="spx" min="1" max="100" aria-label="Speed X">
 </div>
-            <div class="fld">
+              <div class="fld">
   <div class="rowb"><span class="k">Speed Y =</span><span class="val " data-for="k43"></span></div>
   <input class="api " type="range" id="k43" data-key="43" data-type="int32" fetched-value="" data-o="B" data-n="spy" min="1" max="100" aria-label="Speed Y">
 </div>
+            </div>
+            <span class="hint spd-note" hidden>Uniform speed is on, so its speed under Shared
+              settings moves the pointer on every screen instead.</span>
 
           </div>
         </div>
@@ -1068,6 +1223,30 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
                   screen, so it can keep going in one direction. Off stops it at the outer edges. The
                   jump threshold and double tap apply as at the border.</span>
 </div>
+        </div>
+
+        <span class="lbl">Uniform speed</span>
+        <div class="grp">
+          <div class="sw-row">
+            <button type="button" class="sw" role="switch" aria-checked="false" data-for="k106"><span></span></button>
+            <input class="api " type="checkbox" id="k106" data-key="106" data-type="uint8" fetched-value="" data-n="uniform" hidden>
+            <span>Move the same distance on every screen</span>
+          </div>
+          <span class="hint">Off: each output's Speed X and Y, under Cursor, move the pointer a share
+            of the screen, so the same setting goes further on a bigger screen. On: a count of mouse
+            movement moves it the same number of pixels on every screen, from the resolution picked on
+            each screen under Arrangement, at the speed below. On is also what lets the board follow the pointer on a
+            Windows computer's extra screens, where Windows moves it: leave Windows' own pointer speed
+            at its default, 10 of 20, and Enhance pointer precision off. On a Mac, enter each screen's
+            "looks like" size from Displays; on Linux, one screen the size of the whole desktop.</span>
+          <div class="uni-part">
+            <div class="fld">
+  <div class="rowb"><span class="k">Speed =</span><span class="val pcts" data-for="k107"></span></div>
+  <input class="api " type="range" id="k107" data-key="107" data-type="uint16" fetched-value="" data-n="pspeed" min="25" max="400" aria-label="Speed">
+</div>
+            <span class="hint">100% is a pixel per count, the speed Windows moves its own pointer at
+              by default.</span>
+          </div>
         </div>
 
         <span class="lbl">Device flags</span>
@@ -2049,6 +2228,8 @@ function syncControl(element) {
     refreshSwitching();
   else if (element.dataset.n === 'ledmode')
     refreshLed();
+  else if (element.dataset.n === 'uniform')
+    refreshUniform();
 
   if (element.hasAttribute('data-fw-ver'))
     refreshVersions();
@@ -2093,6 +2274,9 @@ function renderView(view, element) {
     view.disabled = (parseInt(value, 10) || 0) === HOTKEY_OFF;
   } else if (list.contains('swap')) {
     view.setAttribute('aria-pressed', value != 0);
+  } else if (list.contains('pcts')) {
+    /* Uniform speed, pixels per count in percent. */
+    view.textContent = `${parseInt(value, 10) || 0}%`;
   } else if (list.contains('pctv')) {
     /* Raw screen coordinates mean little on their own, so the share of the screen
        is spelled out beside them. One decimal, because the bottom of the range
@@ -2159,6 +2343,31 @@ function refreshOutput(output) {
     band.hidden = i !== bandIndex;
     band.style.top = pct(top) + '%';
     band.style.height = Math.max(2, pct(bottom - top)) + '%';
+  });
+
+  /* Resolution pickers, one on each screen in the diagram. The diagram numbers screens left
+     to right and the firmware counts them out from the border, so each picker is told which
+     screen it sets. It shows that screen's resolution, or Custom where no preset has it or
+     Custom was picked, and a screen on Custom gets a row under the diagram to type it into,
+     named by its number in the diagram. */
+  document.querySelectorAll(`.res-row[data-o="${output}"]`).forEach(row => { row.hidden = true; });
+
+  diagram.querySelectorAll('.res-pre').forEach(pick => {
+    const mon = Number(pick.dataset.mon);
+
+    if (mon >= count)
+      return;
+
+    const screen = left ? count - mon : mon + 1;
+    const size = `${apiNumber(output, 'w' + screen, 0)}x${apiNumber(output, 'h' + screen, 0)}`;
+    const preset = [...pick.options].some(option => option.value === size);
+    const row = document.querySelector(`.res-row[data-o="${output}"][data-s="${screen}"]`);
+
+    pick.dataset.s = screen;
+    pick.value = (preset && !customScreens.has(output + screen)) ? size : 'custom';
+
+    row.hidden = pick.value !== 'custom';
+    row.querySelector('.res-n').textContent = mon + 1;
   });
 
   const edge = left ? 'right' : 'left';
@@ -2245,6 +2454,81 @@ function refreshLed() {
     part.classList.toggle('off', off);
     part.querySelectorAll('button, input').forEach(control => { control.disabled = off; });
   });
+}
+
+/* Uniform speed takes over from Speed X and Y, so whichever is not in use dims, keeping its
+   values: saveHandler writes every field, dimmed or not. */
+function refreshUniform() {
+  const master = document.querySelector('.api[data-n="uniform"]');
+  const on = !!(master && master.checked);
+
+  document.querySelectorAll('.uni-part').forEach(part => {
+    part.classList.toggle('off', !on);
+    part.querySelectorAll('button, input, select').forEach(control => { control.disabled = !on; });
+  });
+
+  document.querySelectorAll('.spd-part').forEach(part => {
+    part.classList.toggle('off', on);
+    part.querySelectorAll('button, input').forEach(control => { control.disabled = on; });
+  });
+
+  document.querySelectorAll('.spd-note').forEach(note => { note.hidden = !on; });
+
+  /* The pickers sit on the screens in the diagram rather than inside a part of their own. */
+  document.querySelectorAll('.res-pre').forEach(pick => {
+    pick.disabled = !on;
+    pick.classList.toggle('off', !on);
+  });
+}
+
+/* Screens Custom was picked for, by output and firmware screen number, so their rows stay open
+   while what they hold still matches a preset. Page state only. */
+const customScreens = new Set();
+
+/* A preset fills in both numbers. Custom opens the screen's row for them to be typed. */
+function resolutionPicked(event) {
+  const pick = event.target;
+
+  if (!pick.classList.contains('res-pre'))
+    return;
+
+  const output = pick.dataset.o;
+  const screen = pick.dataset.s;
+
+  if (pick.value === 'custom') {
+    customScreens.add(output + screen);
+    refreshOutput(output);
+    apiValue(output, 'w' + screen).focus();
+    return;
+  }
+
+  const [width, height] = pick.value.split('x');
+
+  customScreens.delete(output + screen);
+  setApi(apiValue(output, 'w' + screen), width);
+  setApi(apiValue(output, 'h' + screen), height);
+  refreshOutput(output);
+}
+
+/* A resolution is typed straight into its .api field. The firmware reads anything under 64
+   as its default, so an empty or stray value goes back to what it was, and the rest is kept
+   within what the field offers. Capture phase, like coordChanged, so the value is right
+   before anything else reads it. */
+function resolutionTyped(event) {
+  const field = event.target;
+
+  if (!field.classList.contains('res-in'))
+    return;
+
+  let value = Math.round(Number(field.value)) || Number(field.getAttribute('fetched-value'))
+              || (field.dataset.n.startsWith('w') ? 1920 : 1080);
+
+  value = Math.max(64, Math.min(16384, value));
+
+  if (String(value) !== field.value) {
+    field.value = value;
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+  }
 }
 
 function useFullEdge(output) {
@@ -2749,7 +3033,9 @@ window.addEventListener('load', function () {
 
   panel.addEventListener('click', panelClick);
   panel.addEventListener('change', coordChanged, true);
+  panel.addEventListener('change', resolutionTyped, true);
   panel.addEventListener('change', secondsChanged);
+  panel.addEventListener('change', resolutionPicked);
 
   /* Redraw on every value change, whether it came from the device or an edit.
      Only edits mark the form dirty. */
@@ -2787,6 +3073,7 @@ window.addEventListener('load', function () {
   refreshOutput('A');
   refreshOutput('B');
   refreshSwitching();
+  refreshUniform();
   refreshLed();
   setConnected(false);
 });

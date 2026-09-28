@@ -53,6 +53,17 @@
 #define MOUSE_ZOOM_SCALING_FACTOR 2
 #define NUM_SCREENS 2
 
+/* The most screens the config page offers an output, and so how many sizes each output
+   keeps in config.screen_size for uniform speed. */
+#define MAX_SCREENS_PER_OUTPUT 3
+
+/* What uniform speed accepts from config. The config API stores whatever it is sent, so a
+   pointer speed or screen size outside these is read as the default in user_config.h:
+   none at all would stop the pointer dead, and a screen of no width divides by zero. */
+#define POINTER_SPEED_MIN 10
+#define POINTER_SPEED_MAX 1000
+#define SCREEN_SIZE_MIN   64
+
 /* Entries in hotkeys[] (keyboard.c). Pinned here because config_t stores one packed
    combo per entry; keyboard.c asserts the table still matches. */
 #define NUM_HOTKEYS 12

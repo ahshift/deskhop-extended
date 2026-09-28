@@ -66,6 +66,12 @@ typedef struct {
     bool upgrade_in_progress; // True if firmware transfer from the other box is in progress
 } fw_upgrade_state_t;
 
+/* A screen's resolution, in the pixels its operating system moves the pointer by. */
+typedef struct {
+    uint16_t width;
+    uint16_t height;
+} screen_size_t;
+
 typedef struct {
     uint32_t magic_header;
     uint32_t version;
@@ -107,6 +113,14 @@ typedef struct {
        appended here; each one needs an api_field_map entry to be stored at all. */
 
     uint8_t wrap_around;    /* Past a screen's outer edge, cross to the other computer's far edge */
+
+    /* Uniform speed: the pointer moves the same number of pixels per count on every screen,
+       from each screen's resolution, instead of the share of a screen speed_x and speed_y
+       give. pointer_speed is those pixels per count in percent. screen_size is kept apart
+       from output_t because output_t is part of the frozen config_v9_t layout. */
+    uint8_t uniform_speed;
+    uint16_t pointer_speed;
+    screen_size_t screen_size[NUM_SCREENS][MAX_SCREENS_PER_OUTPUT];
 } config_t;
 
 
@@ -130,6 +144,12 @@ typedef struct {
 
     int16_t pointer_x; // Store and update the location of our mouse pointer
     int16_t pointer_y;
+
+    /* Uniform speed moves the pointer in fractions of a pixel, and what does not add up to a
+       whole one yet is carried into the next report rather than dropped: in pixels for what a
+       Windows extra screen is sent, in screen coordinates for where the pointer is. */
+    float uniform_rest_px[2];
+    float uniform_rest_units[2];
     int16_t mouse_buttons; // Which buttons the output PC is being told are held down
 
     /* A mouse report carries the full button state of the device that sent it, so the

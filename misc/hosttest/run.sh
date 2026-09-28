@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build and run the host-side tests. See test_config_store.c, test_hotkeys.c,
-# test_save_shortcuts.c, test_mouse.c and test_wrap_around.c.
+# test_save_shortcuts.c, test_mouse.c, test_wrap_around.c and test_uniform_speed.c.
 set -euo pipefail
 cd "$(dirname "$0")"
 root="$(git rev-parse --show-toplevel)"
@@ -49,8 +49,14 @@ gcc -std=c11 -Wall -Wextra -Wno-unused-parameter -g -fsanitize=address,undefined
     -I shim/sdk -I "$out/sdk" -I "$root/src/include" \
     test_wrap_around.c "$root/src/mouse.c" -lm -o "$out/test_wrap_around"
 
+# And once more for uniform speed, the same file's arithmetic with its own settings.
+gcc -std=c11 -Wall -Wextra -Wno-unused-parameter -g -fsanitize=address,undefined \
+    -I shim/sdk -I "$out/sdk" -I "$root/src/include" \
+    test_uniform_speed.c "$root/src/mouse.c" -lm -o "$out/test_uniform_speed"
+
 "$out/test_config_store"
 "$out/test_hotkeys"
 "$out/test_save_shortcuts"
 "$out/test_mouse"
 "$out/test_wrap_around"
+"$out/test_uniform_speed"

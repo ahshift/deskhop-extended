@@ -126,10 +126,75 @@ float calculate_mouse_acceleration_factor(int32_t offset_x, int32_t offset_y) {
     return lower->factor + interpolation_pos * (upper->factor - lower->factor);
 }
 
+/* Uniform speed: how many pixels a count moves the pointer, slowed the way slow mouse slows
+   speed_x and speed_y. */
+static float uniform_pixels_per_count(device_t *state, uint8_t reduce_speed) {
+    uint16_t percent = state->config.pointer_speed;
+
+    if (percent < POINTER_SPEED_MIN || percent > POINTER_SPEED_MAX)
+        percent = POINTER_SPEED;
+
+    return percent / 100.0f / (1 << reduce_speed);
+}
+
+/* The resolution of the screen the pointer is on, or the default where nothing usable is
+   stored against it. */
+static screen_size_t current_screen_size(device_t *state) {
+    uint32_t      index = state->config.output[state->active_output].screen_index;
+    screen_size_t size  = {SCREEN_WIDTH, SCREEN_HEIGHT};
+
+    if (index >= 1 && index <= MAX_SCREENS_PER_OUTPUT) {
+        screen_size_t stored = state->config.screen_size[state->active_output][index - 1];
+
+        if (stored.width >= SCREEN_SIZE_MIN)
+            size.width = stored.width;
+
+        if (stored.height >= SCREEN_SIZE_MIN)
+            size.height = stored.height;
+    }
+
+    return size;
+}
+
+/* Uniform speed, one axis: the move in pixels, then in screen coordinates, where crossing the
+   screen from one edge to the other is size - 1 pixels.
+
+   On a Windows extra screen Windows moves the cursor itself, a pixel per count at its default
+   speed, so it is sent the pixels, whole, in place of the raw move. Where the pointer is then
+   follows from what was sent, which puts it where Windows has it and makes the outer edge the
+   real one. Everywhere else the board places the pointer itself. Either way the fraction that
+   did not make a whole step is carried into the next report, so a slow move is not lost. */
+static int uniform_offset(device_t *state, int axis, int32_t *move, float pixels_per_count, uint16_t size) {
+    float px = *move * pixels_per_count;
+
+    if (state->relative_mouse && !state->gaming_mode) {
+        float want = px + state->uniform_rest_px[axis];
+        float sent = roundf(want);
+
+        /* The report carries 16 bits. Past that, drop the rest rather than play it out
+           over the reports that follow. */
+        if (sent > INT16_MAX)
+            sent = INT16_MAX;
+        else if (sent < -INT16_MAX)
+            sent = -INT16_MAX;
+
+        state->uniform_rest_px[axis] = (fabsf(want - sent) < 1.0f) ? want - sent : 0.0f;
+        *move = (int32_t)sent;
+        px    = sent;
+    }
+
+    float units  = px * MAX_SCREEN_COORD / (size - 1) + state->uniform_rest_units[axis];
+    int   offset = (int)roundf(units);
+
+    state->uniform_rest_units[axis] = units - offset;
+    return offset;
+}
+
 /* Returns LEFT if need to jump left, RIGHT if right, NONE otherwise */
 enum screen_pos_e update_mouse_position(device_t *state, mouse_values_t *values) {
     output_t *current    = &state->config.output[state->active_output];
     uint8_t reduce_speed = 0;
+    int offset_x, offset_y;
 
     /* Check if we are configured to move slowly */
     if (state->mouse_zoom)
@@ -137,8 +202,17 @@ enum screen_pos_e update_mouse_position(device_t *state, mouse_values_t *values)
 
     /* Calculate movement */
     float acceleration_factor = calculate_mouse_acceleration_factor(values->move_x, values->move_y);
-    int offset_x = round(values->move_x * acceleration_factor * (current->speed_x >> reduce_speed));
-    int offset_y = round(values->move_y * acceleration_factor * (current->speed_y >> reduce_speed));
+
+    if (state->config.uniform_speed) {
+        float         pixels = uniform_pixels_per_count(state, reduce_speed) * acceleration_factor;
+        screen_size_t screen = current_screen_size(state);
+
+        offset_x = uniform_offset(state, 0, &values->move_x, pixels, screen.width);
+        offset_y = uniform_offset(state, 1, &values->move_y, pixels, screen.height);
+    } else {
+        offset_x = round(values->move_x * acceleration_factor * (current->speed_x >> reduce_speed));
+        offset_y = round(values->move_y * acceleration_factor * (current->speed_y >> reduce_speed));
+    }
 
     /* Determine if our upcoming movement would stay within the screen */
     enum screen_pos_e switch_direction = is_screen_switch_needed(current, state->pointer_x, offset_x);

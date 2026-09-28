@@ -98,6 +98,102 @@ with sync_playwright() as p:
           page.eval_on_selector('[data-key="21"]', "e => e.value") == "120000000",
           page.eval_on_selector('[data-key="21"]', "e => e.value"))
 
+    # ---- uniform speed -----------------------------------------------------
+    # Off, Speed X and Y decide and the resolution pickers and pointer speed are dimmed; on,
+    # the other way round. The pickers sit on the screens in the diagram, numbered left to
+    # right, while the firmware counts screens out from the border, so each has to set the
+    # right pair of keys: A's screens are 30-35 and B's 60-65, width then height.
+    def uniform_state():
+        return page.evaluate("""() => ({
+            pickers: [...document.querySelectorAll('.res-pre')].every(p => p.disabled),
+            speed: el('k107').disabled,
+            speedx: document.querySelector('.api[data-n="spx"]').disabled,
+            note: document.querySelector('.spd-note').hidden,
+        })""")
+
+    def pickers(output):
+        return page.evaluate("""o => [...document.querySelectorAll(`.res-pre[data-o="${o}"]`)]
+            .filter(p => !p.closest('.mon').hidden).map(p => [p.dataset.s, p.value])""", output)
+
+    def values(*keys):
+        return [page.eval_on_selector(f"#k{key}", "e => e.value") for key in keys]
+
+    page.evaluate("() => setValue(el('k106'), 0)")
+    check("off, the pickers and the pointer speed are dimmed and Speed X is not",
+          uniform_state() == {"pickers": True, "speed": True, "speedx": False, "note": True},
+          uniform_state())
+
+    page.click('.sw[data-for="k106"]')
+    check("the switch turns it on", page.eval_on_selector("#k106", "e => e.checked"))
+    check("which hands the speed over from Speed X and Y",
+          uniform_state() == {"pickers": False, "speed": False, "speedx": True, "note": False},
+          uniform_state())
+
+    page.evaluate("() => setValue(el('k107'), 150)")
+    check("the pointer speed reads as a percentage",
+          page.eval_on_selector('.val[data-for="k107"]', "e => e.textContent") == "150%",
+          page.eval_on_selector('.val[data-for="k107"]', "e => e.textContent"))
+
+    # B on the left with two screens, the desk this was asked for: the screen drawn on the
+    # right, next to the border, is the firmware's first.
+    page.evaluate("""() => {
+        setValue(el('k47'), 1); setValue(el('k41'), 2);
+        setValue(el('k60'), 2560); setValue(el('k61'), 1440);
+        setValue(el('k62'), 1920); setValue(el('k63'), 1080);
+    }""")
+    check("on a left output the screen drawn next to the border is the firmware's first",
+          pickers("B") == [["2", "1920x1080"], ["1", "2560x1440"]], pickers("B"))
+
+    page.evaluate("""() => {
+        setValue(el('k17'), 2); setValue(el('k11'), 3);
+        setValue(el('k30'), 2560); setValue(el('k31'), 1440);
+        setValue(el('k32'), 3840); setValue(el('k33'), 2160);
+        setValue(el('k34'), 1920); setValue(el('k35'), 1080);
+    }""")
+    check("on a right output they run out from the border as drawn",
+          pickers("A") == [["1", "2560x1440"], ["2", "3840x2160"], ["3", "1920x1080"]],
+          pickers("A"))
+
+    page.select_option('.res-pre[data-o="B"][data-mon="0"]', "3440x1440")
+    check("a preset picked on a screen fills in that screen's pair",
+          values(62, 63) == ["3440", "1440"], values(62, 63))
+    check("and leaves the other screen alone", values(60, 61) == ["2560", "1440"], values(60, 61))
+
+    row = page.locator('.res-row[data-o="B"][data-s="1"]')
+    check("no row to type into while every screen is on a preset",
+          page.locator('.res-row[data-o="B"]:not([hidden])').count() == 0)
+    page.select_option('.res-pre[data-o="B"][data-mon="1"]', "custom")
+    check("Custom opens one for that screen", row.is_visible())
+    check("named by its number in the diagram", row.locator(".res-n").text_content() == "2",
+          row.locator(".res-n").text_content())
+
+    page.fill("#k60", "3000")
+    page.dispatch_event("#k60", "change")
+    page.fill("#k61", "2000")
+    page.dispatch_event("#k61", "change")
+    check("what is typed there is the resolution", values(60, 61) == ["3000", "2000"],
+          values(60, 61))
+    check("and the picker stays on Custom, which no preset has",
+          page.eval_on_selector('.res-pre[data-o="B"][data-mon="1"]', "e => e.value") == "custom")
+
+    page.fill("#k61", "10")
+    page.dispatch_event("#k61", "change")
+    check("too small a number is raised to the least the board takes",
+          values(61) == ["64"], values(61))
+    page.fill("#k61", "")
+    page.dispatch_event("#k61", "change")
+    check("and an emptied box goes back to what the board holds", values(61) == ["1440"],
+          values(61))
+
+    page.select_option('.res-pre[data-o="B"][data-mon="1"]', "2560x1440")
+    check("picking a preset closes the row again", not row.is_visible())
+
+    page.evaluate("() => setValue(el('k41'), 1)")
+    check("one picker for one screen", len(pickers("B")) == 1, pickers("B"))
+
+    page.click('.sw[data-for="k106"]')
+    check("and off dims them again", uniform_state()["pickers"], uniform_state())
+
     # ---- shortcuts ---------------------------------------------------------
     rows = page.locator(".hk-row")
     check("one row per hotkey", rows.count() == 12, rows.count())
