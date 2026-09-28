@@ -122,6 +122,8 @@ configuration.</em></p>
   and cleared on the way while the page showed it saved. The board now checks the shortcuts
   together when Save stores them, and the page reads everything back afterwards and names any
   shortcut the board refused.
+  [c3c9ffe](https://github.com/mglushko/deskhop-extended/commit/c3c9ffe),
+  [0cfc1a7](https://github.com/mglushko/deskhop-extended/commit/0cfc1a7)
 - **A shortcut can be turned off** - press **Off** on any of the eleven settable rows and that
   shortcut stops working. The row reads *Disabled*, **Default** brings it back, and the
   combination it gave up is free for another shortcut to take. There was no way to do this
@@ -136,6 +138,7 @@ configuration.</em></p>
   off on the page, since nothing reaches the device before Save. While the page is open and the
   keyboard types into its computer, only config mode's combination runs now, and saved shortcuts
   take effect once you press Exit.
+  [e3f4f63](https://github.com/mglushko/deskhop-extended/commit/e3f4f63)
 
 Wiping the configuration has no shortcut here at all - upstream's `Right Shift + F12 + D` is gone,
 since a combination that erases every setting is too easy to reach by accident. Wipe Config on the
