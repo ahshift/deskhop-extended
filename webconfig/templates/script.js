@@ -137,6 +137,8 @@ function updateElement(key, event) {
 
     if (element.hasAttribute('data-fw-ver'))
       setValue(element, formatFwVersion(value));
+
+    checkKept(element);
   }
 }
 
@@ -147,9 +149,9 @@ async function handleInputReport(event) {
   updateElement(key, event);
 }
 
-/* Writes one control to both boards. Only saveHandler calls this - a set lands in the
-   live config the moment it arrives, and for a shortcut the device rebuilds its hotkey
-   table on the spot, so sending on edit would apply it before Save. */
+/* Writes one control to both boards. Only saveHandler calls this: most settings take
+   effect on the device the moment they arrive, so sending on edit would apply them before
+   Save. */
 async function writeValue(element) {
   var key = element.getAttribute('data-key');
   var dataType = element.getAttribute('data-type');
@@ -193,7 +195,12 @@ async function connectHandler() {
 /* Every setting goes to both boards, changed or not. The page reads only the board it is
    connected to, so comparing against that board says nothing about the other one: a
    setting that already matched here was never sent there, and a board whose copy had
-   drifted stayed that way until Wipe Config reset both. */
+   drifted stayed that way until Wipe Config reset both.
+
+   Then it reads everything back, so the page shows what the board stored rather than what
+   it was sent. The board checks the shortcuts as a set when it stores them and clears one
+   it refuses, which puts that row back on its default, and the page used to go on showing
+   the combination it had sent. */
 async function saveHandler() {
   if (!device || !device.opened)
     return;
@@ -202,7 +209,49 @@ async function saveHandler() {
     await writeValue(element);
 
   await sendReport(packetType.saveConfigMsg, [], true);
-  markClean();
+
+  /* As they went out: packValue writes a shortcut through setUint32, which reads an empty
+     field as 0, so that is what the board is answering to. */
+  const sent = {};
+
+  document.querySelectorAll('.hk[data-for]').forEach(view => {
+    const input = el(view.dataset.for);
+
+    sent[input.dataset.key] = Number(input.value) >>> 0;
+  });
+
+  el('hk-m').textContent = '';
+  await reloadFromDevice({ sent: sent, refused: [] });
+}
+
+/* The shortcuts the last Save sent, by key, while the read that follows it is answered, and
+   the rows the board refused so far. Null outside that read, so Read and Connect compare
+   nothing. The page runs the same checks before it stores anything, so a refusal takes an
+   Import, which writes to the fields without them. */
+var afterSave = null;
+
+function checkKept(element) {
+  if (!afterSave || !(element.dataset.key in afterSave.sent))
+    return;
+
+  if ((Number(element.value) >>> 0) !== afterSave.sent[element.dataset.key]) {
+    const view = document.querySelector(`.hk[data-for="${element.id}"]`);
+    const names = afterSave.refused;
+
+    names.push(view.closest('.hk-row').querySelector('.hk-n').textContent);
+
+    el('hk-m').textContent = names.length === 1
+      ? `The board refused the combination set for ${names[0]}, so that row is back on `
+        + 'its default.'
+      : `The board refused the combinations set for ${names.slice(0, -1).join(', ')} and `
+        + `${names[names.length - 1]}, so those rows are back on their defaults.`;
+    el('hk-m').scrollIntoView({ block: 'nearest' });
+  }
+
+  delete afterSave.sent[element.dataset.key];
+
+  if (!Object.keys(afterSave.sent).length)
+    afterSave = null;
 }
 
 async function blinkHandler() {
@@ -501,10 +550,11 @@ async function readHandler() {
     'Discard & reload');
 }
 
-async function reloadFromDevice() {
+async function reloadFromDevice(check = null) {
   if (!device || !device.opened)
     return;
 
+  afterSave = check;
   await sendReport(packetType.getValAllMsg);
   markClean();
 }
@@ -574,6 +624,8 @@ function syncControl(element) {
     refreshSwitching();
   else if (element.dataset.n === 'ledmode')
     refreshLed();
+  else if (element.dataset.n === 'uniform')
+    refreshUniform();
 
   if (element.hasAttribute('data-fw-ver'))
     refreshVersions();
@@ -618,6 +670,9 @@ function renderView(view, element) {
     view.disabled = (parseInt(value, 10) || 0) === HOTKEY_OFF;
   } else if (list.contains('swap')) {
     view.setAttribute('aria-pressed', value != 0);
+  } else if (list.contains('pcts')) {
+    /* Uniform speed, pixels per count in percent. */
+    view.textContent = `${parseInt(value, 10) || 0}%`;
   } else if (list.contains('pctv')) {
     /* Raw screen coordinates mean little on their own, so the share of the screen
        is spelled out beside them. One decimal, because the bottom of the range
@@ -684,6 +739,31 @@ function refreshOutput(output) {
     band.hidden = i !== bandIndex;
     band.style.top = pct(top) + '%';
     band.style.height = Math.max(2, pct(bottom - top)) + '%';
+  });
+
+  /* Resolution pickers, one under each screen in the diagram. The diagram numbers screens left
+     to right and the firmware counts them out from the border, so each picker is told which
+     screen it sets. It shows that screen's resolution, or Custom where no preset has it or
+     Custom was picked, and a screen on Custom gets a row under the diagram to type it into,
+     named by its number in the diagram. */
+  document.querySelectorAll(`.res-row[data-o="${output}"]`).forEach(row => { row.hidden = true; });
+
+  diagram.querySelectorAll('.res-pre').forEach(pick => {
+    const mon = Number(pick.dataset.mon);
+
+    if (mon >= count)
+      return;
+
+    const screen = left ? count - mon : mon + 1;
+    const size = `${apiNumber(output, 'w' + screen, 0)}x${apiNumber(output, 'h' + screen, 0)}`;
+    const preset = [...pick.options].some(option => option.value === size);
+    const row = document.querySelector(`.res-row[data-o="${output}"][data-s="${screen}"]`);
+
+    pick.dataset.s = screen;
+    pick.value = (preset && !customScreens.has(output + screen)) ? size : 'custom';
+
+    row.hidden = pick.value !== 'custom';
+    row.querySelector('.res-n').textContent = mon + 1;
   });
 
   const edge = left ? 'right' : 'left';
@@ -770,6 +850,80 @@ function refreshLed() {
     part.classList.toggle('off', off);
     part.querySelectorAll('button, input').forEach(control => { control.disabled = off; });
   });
+}
+
+/* Uniform speed takes over from Speed X and Y, so whichever is not in use dims, keeping its
+   values: saveHandler writes every field, dimmed or not. */
+function refreshUniform() {
+  const master = document.querySelector('.api[data-n="uniform"]');
+  const on = !!(master && master.checked);
+
+  document.querySelectorAll('.uni-part').forEach(part => {
+    part.classList.toggle('off', !on);
+    part.querySelectorAll('button, input, select').forEach(control => { control.disabled = !on; });
+  });
+
+  document.querySelectorAll('.spd-part').forEach(part => {
+    part.classList.toggle('off', on);
+    part.querySelectorAll('button, input').forEach(control => { control.disabled = on; });
+  });
+
+  document.querySelectorAll('.spd-note').forEach(note => { note.hidden = !on; });
+
+  /* The pickers sit under the screens in the diagram rather than inside a part of their own.
+     The note under the diagram stays as it is: it says why they are dimmed. */
+  document.querySelectorAll('.res-f').forEach(field => { field.classList.toggle('off', !on); });
+  document.querySelectorAll('.res-pre').forEach(pick => { pick.disabled = !on; });
+}
+
+/* Screens Custom was picked for, by output and firmware screen number, so their rows stay open
+   while what they hold still matches a preset. Page state only. */
+const customScreens = new Set();
+
+/* A preset fills in both numbers. Custom opens the screen's row for them to be typed. */
+function resolutionPicked(event) {
+  const pick = event.target;
+
+  if (!pick.classList.contains('res-pre'))
+    return;
+
+  const output = pick.dataset.o;
+  const screen = pick.dataset.s;
+
+  if (pick.value === 'custom') {
+    customScreens.add(output + screen);
+    refreshOutput(output);
+    apiValue(output, 'w' + screen).focus();
+    return;
+  }
+
+  const [width, height] = pick.value.split('x');
+
+  customScreens.delete(output + screen);
+  setApi(apiValue(output, 'w' + screen), width);
+  setApi(apiValue(output, 'h' + screen), height);
+  refreshOutput(output);
+}
+
+/* A resolution is typed straight into its .api field. The firmware reads anything under 64
+   as its default, so an empty or stray value goes back to what it was, and the rest is kept
+   within what the field offers. Capture phase, like coordChanged, so the value is right
+   before anything else reads it. */
+function resolutionTyped(event) {
+  const field = event.target;
+
+  if (!field.classList.contains('res-in'))
+    return;
+
+  let value = Math.round(Number(field.value)) || Number(field.getAttribute('fetched-value'))
+              || (field.dataset.n.startsWith('w') ? 1920 : 1080);
+
+  value = Math.max(64, Math.min(16384, value));
+
+  if (String(value) !== field.value) {
+    field.value = value;
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+  }
 }
 
 function useFullEdge(output) {
@@ -1274,7 +1428,9 @@ window.addEventListener('load', function () {
 
   panel.addEventListener('click', panelClick);
   panel.addEventListener('change', coordChanged, true);
+  panel.addEventListener('change', resolutionTyped, true);
   panel.addEventListener('change', secondsChanged);
+  panel.addEventListener('change', resolutionPicked);
 
   /* Redraw on every value change, whether it came from the device or an edit.
      Only edits mark the form dirty. */
@@ -1312,6 +1468,7 @@ window.addEventListener('load', function () {
   refreshOutput('A');
   refreshOutput('B');
   refreshSwitching();
+  refreshUniform();
   refreshLed();
   setConnected(false);
 });

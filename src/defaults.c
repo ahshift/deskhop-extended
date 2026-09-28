@@ -70,4 +70,13 @@ const config_t default_config = {
     .switch_double_tap_enable = SWITCH_DOUBLE_TAP_ENABLE,
     .switch_double_tap_ms = SWITCH_DOUBLE_TAP_MS,
     .switch_double_tap_margin = SWITCH_DOUBLE_TAP_MARGIN,
+    .wrap_around = WRAP_AROUND,
+    .uniform_speed = UNIFORM_SPEED,
+    .pointer_speed = POINTER_SPEED,
+    .screen_size = {
+        {{SCREEN_WIDTH, SCREEN_HEIGHT}, {SCREEN_WIDTH, SCREEN_HEIGHT}, {SCREEN_WIDTH, SCREEN_HEIGHT}},
+        {{SCREEN_WIDTH, SCREEN_HEIGHT}, {SCREEN_WIDTH, SCREEN_HEIGHT}, {SCREEN_WIDTH, SCREEN_HEIGHT}},
+    },
 };
+
+_Static_assert(MAX_SCREENS_PER_OUTPUT == 3, "default_config.screen_size lists three screens per output");

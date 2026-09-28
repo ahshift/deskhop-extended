@@ -46,6 +46,12 @@ CONFIG_ = [
     # Kept far below 16384, where the release check in process_mouse_report() can no
     # longer be satisfied by any pointer_x and the edge never releases.
     FormField(85, "Double-Tap Pull-Back Distance", 1000, {"min": 50, "max": 5000}, "uint16", "range"),
+    FormField(105, "Wrap Around", None, {}, "uint8", "checkbox"),
+    # Uniform speed: the same pixels per count on every screen, from the resolutions each
+    # output lists under Arrangement. Pointer Speed is those pixels in percent, 100 being
+    # one; the firmware takes 10 to 1000 and reads anything else as 100.
+    FormField(106, "Uniform Speed", None, {}, "uint8", "checkbox"),
+    FormField(107, "Pointer Speed", 100, {"min": 25, "max": 400}, "uint16", "range"),
 
     FormField(1002, "Keyboard", elem="label"),
     FormField(72, "Force KBD Boot Protocol", None, {}, "uint8", "checkbox"),
@@ -118,6 +124,14 @@ OUTPUT_ = [
     FormField(10, "Only If Inactive", None, {}, "uint8", "checkbox"),
     FormField(11, "Idle Time (μs)", None, {}, "uint64"),
     FormField(12, "Max Time (μs)", None, {}, "uint64"),
+    # Each screen's resolution, for uniform speed, from offset 20 so whatever upstream adds
+    # after 12 has room: keys 30-35 for A and 60-65 for B, as src/protocol.c has them.
+    FormField(20, "Screen 1 Width", 1920, {"min": 64, "max": 16384}, "uint16"),
+    FormField(21, "Screen 1 Height", 1080, {"min": 64, "max": 16384}, "uint16"),
+    FormField(22, "Screen 2 Width", 1920, {"min": 64, "max": 16384}, "uint16"),
+    FormField(23, "Screen 2 Height", 1080, {"min": 64, "max": 16384}, "uint16"),
+    FormField(24, "Screen 3 Width", 1920, {"min": 64, "max": 16384}, "uint16"),
+    FormField(25, "Screen 3 Height", 1080, {"min": 64, "max": 16384}, "uint16"),
 ]
 
 def generate_output(base, data):

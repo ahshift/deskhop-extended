@@ -34,6 +34,16 @@ const field_map_t api_field_map[] = {
     { 21, false, UINT64, 7, offsetof(device_t, config.output[0].screensaver.idle_time_us) },
     { 22, false, UINT64, 7, offsetof(device_t, config.output[0].screensaver.max_time_us) },
 
+    /* Output A's screens for uniform speed, width then height of each. Offset 20 on from the
+       output's base, like the page lays out every per-output field, which leaves the offsets
+       just past upstream's for whatever it adds next. */
+    { 30, false, UINT16, 2, offsetof(device_t, config.screen_size[0][0].width) },
+    { 31, false, UINT16, 2, offsetof(device_t, config.screen_size[0][0].height) },
+    { 32, false, UINT16, 2, offsetof(device_t, config.screen_size[0][1].width) },
+    { 33, false, UINT16, 2, offsetof(device_t, config.screen_size[0][1].height) },
+    { 34, false, UINT16, 2, offsetof(device_t, config.screen_size[0][2].width) },
+    { 35, false, UINT16, 2, offsetof(device_t, config.screen_size[0][2].height) },
+
     /* Output B */
     { 40, false, UINT32, 4, offsetof(device_t, config.output[1].number) },
     { 41, false, UINT32, 4, offsetof(device_t, config.output[1].screen_count) },
@@ -48,6 +58,14 @@ const field_map_t api_field_map[] = {
     { 50, false, UINT8,  1, offsetof(device_t, config.output[1].screensaver.only_if_inactive) },
     { 51, false, UINT64, 7, offsetof(device_t, config.output[1].screensaver.idle_time_us) },
     { 52, false, UINT64, 7, offsetof(device_t, config.output[1].screensaver.max_time_us) },
+
+    /* Output B's screens, the same way */
+    { 60, false, UINT16, 2, offsetof(device_t, config.screen_size[1][0].width) },
+    { 61, false, UINT16, 2, offsetof(device_t, config.screen_size[1][0].height) },
+    { 62, false, UINT16, 2, offsetof(device_t, config.screen_size[1][1].width) },
+    { 63, false, UINT16, 2, offsetof(device_t, config.screen_size[1][1].height) },
+    { 64, false, UINT16, 2, offsetof(device_t, config.screen_size[1][2].width) },
+    { 65, false, UINT16, 2, offsetof(device_t, config.screen_size[1][2].height) },
 
     /* Common config */
     { 70, false, UINT32, 4, offsetof(device_t, config.version) },
@@ -65,6 +83,9 @@ const field_map_t api_field_map[] = {
     { 88, false, UINT8,  1, offsetof(device_t, config.led_off_mode) },
     { 89, false, UINT16, 2, offsetof(device_t, config.led_off_sec) },
     { 103, false, UINT16, 2, offsetof(device_t, config.led_switch_sec) },
+    { 105, false, UINT8,  1, offsetof(device_t, config.wrap_around) },
+    { 106, false, UINT8,  1, offsetof(device_t, config.uniform_speed) },
+    { 107, false, UINT16, 2, offsetof(device_t, config.pointer_speed) },
 
     /* Hotkeys, one packed combo per entry in hotkeys[] (keyboard.c) and in that order.
 

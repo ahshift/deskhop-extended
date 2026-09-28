@@ -98,6 +98,102 @@ with sync_playwright() as p:
           page.eval_on_selector('[data-key="21"]', "e => e.value") == "120000000",
           page.eval_on_selector('[data-key="21"]', "e => e.value"))
 
+    # ---- uniform speed -----------------------------------------------------
+    # Off, Speed X and Y decide and the resolution pickers and pointer speed are dimmed; on,
+    # the other way round. The pickers sit on the screens in the diagram, numbered left to
+    # right, while the firmware counts screens out from the border, so each has to set the
+    # right pair of keys: A's screens are 30-35 and B's 60-65, width then height.
+    def uniform_state():
+        return page.evaluate("""() => ({
+            pickers: [...document.querySelectorAll('.res-pre')].every(p => p.disabled),
+            speed: el('k107').disabled,
+            speedx: document.querySelector('.api[data-n="spx"]').disabled,
+            note: document.querySelector('.spd-note').hidden,
+        })""")
+
+    def pickers(output):
+        return page.evaluate("""o => [...document.querySelectorAll(`.res-pre[data-o="${o}"]`)]
+            .filter(p => !p.closest('.mon').hidden).map(p => [p.dataset.s, p.value])""", output)
+
+    def values(*keys):
+        return [page.eval_on_selector(f"#k{key}", "e => e.value") for key in keys]
+
+    page.evaluate("() => setValue(el('k106'), 0)")
+    check("off, the pickers and the pointer speed are dimmed and Speed X is not",
+          uniform_state() == {"pickers": True, "speed": True, "speedx": False, "note": True},
+          uniform_state())
+
+    page.click('.sw[data-for="k106"]')
+    check("the switch turns it on", page.eval_on_selector("#k106", "e => e.checked"))
+    check("which hands the speed over from Speed X and Y",
+          uniform_state() == {"pickers": False, "speed": False, "speedx": True, "note": False},
+          uniform_state())
+
+    page.evaluate("() => setValue(el('k107'), 150)")
+    check("the pointer speed reads as a percentage",
+          page.eval_on_selector('.val[data-for="k107"]', "e => e.textContent") == "150%",
+          page.eval_on_selector('.val[data-for="k107"]', "e => e.textContent"))
+
+    # B on the left with two screens, the desk this was asked for: the screen drawn on the
+    # right, next to the border, is the firmware's first.
+    page.evaluate("""() => {
+        setValue(el('k47'), 1); setValue(el('k41'), 2);
+        setValue(el('k60'), 2560); setValue(el('k61'), 1440);
+        setValue(el('k62'), 1920); setValue(el('k63'), 1080);
+    }""")
+    check("on a left output the screen drawn next to the border is the firmware's first",
+          pickers("B") == [["2", "1920x1080"], ["1", "2560x1440"]], pickers("B"))
+
+    page.evaluate("""() => {
+        setValue(el('k17'), 2); setValue(el('k11'), 3);
+        setValue(el('k30'), 2560); setValue(el('k31'), 1440);
+        setValue(el('k32'), 3840); setValue(el('k33'), 2160);
+        setValue(el('k34'), 1920); setValue(el('k35'), 1080);
+    }""")
+    check("on a right output they run out from the border as drawn",
+          pickers("A") == [["1", "2560x1440"], ["2", "3840x2160"], ["3", "1920x1080"]],
+          pickers("A"))
+
+    page.select_option('.res-pre[data-o="B"][data-mon="0"]', "3440x1440")
+    check("a preset picked on a screen fills in that screen's pair",
+          values(62, 63) == ["3440", "1440"], values(62, 63))
+    check("and leaves the other screen alone", values(60, 61) == ["2560", "1440"], values(60, 61))
+
+    row = page.locator('.res-row[data-o="B"][data-s="1"]')
+    check("no row to type into while every screen is on a preset",
+          page.locator('.res-row[data-o="B"]:not([hidden])').count() == 0)
+    page.select_option('.res-pre[data-o="B"][data-mon="1"]', "custom")
+    check("Custom opens one for that screen", row.is_visible())
+    check("named by its number in the diagram", row.locator(".res-n").text_content() == "2",
+          row.locator(".res-n").text_content())
+
+    page.fill("#k60", "3000")
+    page.dispatch_event("#k60", "change")
+    page.fill("#k61", "2000")
+    page.dispatch_event("#k61", "change")
+    check("what is typed there is the resolution", values(60, 61) == ["3000", "2000"],
+          values(60, 61))
+    check("and the picker stays on Custom, which no preset has",
+          page.eval_on_selector('.res-pre[data-o="B"][data-mon="1"]', "e => e.value") == "custom")
+
+    page.fill("#k61", "10")
+    page.dispatch_event("#k61", "change")
+    check("too small a number is raised to the least the board takes",
+          values(61) == ["64"], values(61))
+    page.fill("#k61", "")
+    page.dispatch_event("#k61", "change")
+    check("and an emptied box goes back to what the board holds", values(61) == ["1440"],
+          values(61))
+
+    page.select_option('.res-pre[data-o="B"][data-mon="1"]', "2560x1440")
+    check("picking a preset closes the row again", not row.is_visible())
+
+    page.evaluate("() => setValue(el('k41'), 1)")
+    check("one picker for one screen", len(pickers("B")) == 1, pickers("B"))
+
+    page.click('.sw[data-for="k106"]')
+    check("and off dims them again", uniform_state()["pickers"], uniform_state())
+
     # ---- shortcuts ---------------------------------------------------------
     rows = page.locator(".hk-row")
     check("one row per hotkey", rows.count() == 12, rows.count())
@@ -408,6 +504,66 @@ with sync_playwright() as p:
     again = {b[3]: int.from_bytes(bytes(b[4:8]), "little")
              for b in page.evaluate("() => __sent") if b[2] == 21}
     check("and Save writes it back as the same Off", again.get(96) == HOTKEY_OFF, again.get(96))
+
+    # ---- Save reads back what the board kept -------------------------------
+    # The board checks the shortcuts as a set when it stores them and clears one it refuses,
+    # which puts that row back on its default. The page runs the same checks before it stores
+    # anything, so it takes an Import to get one past them: applyImported writes the field
+    # directly.
+    def device_says(key, value):
+        # One answer to the read Save asks for, the way handleInputReport receives it:
+        # 0xaa 0x55 <type> <key> <value, little-endian> ...
+        page.evaluate("""([key, value]) => {
+            const bytes = new Uint8Array(12);
+            bytes.set([0xaa, 0x55, 20, key]);
+            new DataView(bytes.buffer).setUint32(4, value, true);
+            handleInputReport({data: new DataView(bytes.buffer)});
+        }""", [key, value])
+
+    def shortcut_fields():
+        fields = page.evaluate("""() => Object.fromEntries([...document.querySelectorAll('.hk[data-for]')]
+            .map(v => [el(v.dataset.for).dataset.key, Number(el(v.dataset.for).value)]))""")
+        return {int(key): value for key, value in fields.items()}
+
+    lock_both = 0x10 | (0x0f << 8)      # Right Ctrl + L, which Lock both screens is built with
+    page.evaluate("v => { __sent = []; markClean(); applyImported(el('k92'), v); }", lock_both)
+    page.evaluate("async () => { await saveHandler(); }")
+    order = [b[2] for b in page.evaluate("() => __sent")]
+    check("Save reads the board back once it has stored it", order[-2:] == [18, 22], order[-3:])
+
+    sent = shortcut_fields()
+    device_says(92, 0)                  # refused, and cleared back to the default
+    device_says(93, sent[93])           # kept
+    note = page.eval_on_selector('#hk-m', "e => e.textContent")
+    check("a shortcut the board refused is named", "Lock switching" in note, note)
+    check("one it kept is not", "Lock both screens" not in note, note)
+    check("and the row shows what the board holds",
+          page.locator('.hk[data-for="k92"]').text_content() == "Right Ctrl + K",
+          page.locator('.hk[data-for="k92"]').text_content())
+    check("which leaves the page clean, since it matches the board again",
+          page.evaluate("() => dirty") is False)
+
+    for key, value in sent.items():
+        if key not in (92, 93):
+            device_says(key, value)
+    check("the comparison ends once every shortcut has answered",
+          page.evaluate("() => afterSave === null"))
+
+    page.evaluate("async () => { el('hk-m').textContent = ''; await reloadFromDevice(); }")
+    device_says(92, 0x01 | (0x05 << 8))
+    check("and a read that is not after a Save names nothing",
+          page.eval_on_selector('#hk-m', "e => e.textContent") == "",
+          page.eval_on_selector('#hk-m', "e => e.textContent"))
+
+    # Config mode's own combination, which the board refuses on every row.
+    config_combo = 0x01 | 0x20 | (0x06 << 8) | (0x12 << 16)
+    page.evaluate("v => { applyImported(el('k92'), v); applyImported(el('k93'), v); }", config_combo)
+    page.evaluate("async () => { await saveHandler(); }")
+    device_says(92, 0)
+    device_says(93, 0)
+    note = page.eval_on_selector('#hk-m', "e => e.textContent")
+    check("two refused are named together",
+          "Lock switching and Lock both screens" in note and "those rows" in note, note)
 
     page.evaluate("() => { device = undefined; setConnected(true); }")
 

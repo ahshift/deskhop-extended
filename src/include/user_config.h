@@ -142,6 +142,50 @@
 #define SWITCH_DOUBLE_TAP_MARGIN 1000
 
 /**================================================== *
+ * ==================  Wrap Around ================== *
+ * ================================================== *
+ *
+ * If enabled, pushing the mouse past the outer edge of your outermost screen
+ * (the one facing away from the other computer) takes it to the far edge of
+ * the other computer's outermost screen, so you can keep going in the same
+ * direction. Works with multiple screens per output, using the same Mac and
+ * Windows workarounds. JUMP_THRESHOLD and the edge double-tap apply to this
+ * jump too.
+ *
+ * WRAP_AROUND: [0, 1] - 1 means the outer edges lead to the other computer
+ *                       0 means the mouse stops at the outer edges
+ *
+ * */
+
+#define WRAP_AROUND 0
+
+/**================================================== *
+ * ================  Uniform Speed  ================= *
+ * ================================================== *
+ *
+ * Move the pointer the same number of pixels per count on every screen, worked out from
+ * each screen's resolution, instead of the share of a screen the MOUSE_SPEED factors
+ * give, which moves it faster on a smaller screen. It is also what lets the board follow
+ * the pointer on a Windows computer's extra screens, where Windows moves it: leave
+ * Windows' own pointer speed at its default, 10 of 20, and Enhance pointer precision off.
+ *
+ * UNIFORM_SPEED: [0, 1] - 1 means the same speed on every screen
+ *                         0 means the MOUSE_SPEED factors above
+ *
+ * POINTER_SPEED: [10-1000], pixels per count in percent. 100 is one pixel per count,
+ *                which is how fast Windows moves its own pointer by default.
+ *
+ * SCREEN_WIDTH, SCREEN_HEIGHT: the resolution every screen starts out with. Each one's
+ *                              own is set on the config page.
+ *
+ * */
+
+#define UNIFORM_SPEED 0
+#define POINTER_SPEED 100
+#define SCREEN_WIDTH  1920
+#define SCREEN_HEIGHT 1080
+
+/**================================================== *
  * ==============  Screensaver Config  ============== *
  * ================================================== *
  *

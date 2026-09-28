@@ -326,6 +326,67 @@ int main(void) {
           matched(KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTSHIFT,
                   HID_KEY_C, HID_KEY_O, 0) == HOTKEY_CONFIG_IDX, detail);
 
+    printf("\n  while the config page is open\n\n");
+
+    /* The page records a shortcut from the keystrokes that reach it, so while this board is
+       in config mode and typing into the page's computer, a combination it already has must
+       reach the page rather than run. Each of these used to run instead, the first by
+       switching the keyboard to the other computer, and the page, which never saw the key
+       that completed one, kept whatever had got through. */
+    clear_config();
+    hotkeys_apply_config(&global_state);
+    global_state.config_mode_active = true;
+    global_state.board_role = OUTPUT_A;
+    global_state.active_output = OUTPUT_A;
+
+    snprintf(detail, sizeof(detail), "entry %d", matched(HOTKEY_MODIFIER, HOTKEY_TOGGLE, 0, 0));
+    check("the switch combination reaches the page",
+          matched(HOTKEY_MODIFIER, HOTKEY_TOGGLE, 0, 0) == -1, detail);
+    snprintf(detail, sizeof(detail), "entry %d",
+             matched(KEYBOARD_MODIFIER_RIGHTCTRL, HID_KEY_K, 0, 0));
+    check("so does any other the board has",
+          matched(KEYBOARD_MODIFIER_RIGHTCTRL, HID_KEY_K, 0, 0) == -1, detail);
+    snprintf(detail, sizeof(detail), "entry %d",
+             matched(KEYBOARD_MODIFIER_RIGHTCTRL | KEYBOARD_MODIFIER_RIGHTSHIFT, HID_KEY_K, 0, 0));
+    check("and a new combination that merely contains one",
+          matched(KEYBOARD_MODIFIER_RIGHTCTRL | KEYBOARD_MODIFIER_RIGHTSHIFT,
+                  HID_KEY_K, 0, 0) == -1, detail);
+    snprintf(detail, sizeof(detail), "entry %d",
+             matched(KEYBOARD_MODIFIER_RIGHTALT | KEYBOARD_MODIFIER_RIGHTCTRL, HID_KEY_S, 0, 0));
+    check("the modifiers slow mouse answers on its own do not toggle it",
+          matched(KEYBOARD_MODIFIER_RIGHTALT | KEYBOARD_MODIFIER_RIGHTCTRL,
+                  HID_KEY_S, 0, 0) == -1, detail);
+    snprintf(detail, sizeof(detail), "entry %d",
+             matched(KEYBOARD_MODIFIER_LEFTSHIFT | KEYBOARD_MODIFIER_RIGHTSHIFT, HID_KEY_A, 0, 0));
+    check("nor do both shifts and A drop the board into BOOTSEL",
+          matched(KEYBOARD_MODIFIER_LEFTSHIFT | KEYBOARD_MODIFIER_RIGHTSHIFT,
+                  HID_KEY_A, 0, 0) == -1, detail);
+    snprintf(detail, sizeof(detail), "entry %d",
+             matched(KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTSHIFT,
+                     HID_KEY_C, HID_KEY_O, 0));
+    check("config mode still answers, which is the way out",
+          matched(KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTSHIFT,
+                  HID_KEY_C, HID_KEY_O, 0) == HOTKEY_CONFIG_IDX, detail);
+
+    /* Typing into the other computer, nothing can be recording, so the table is back. That
+       keeps Switch output as a way back to the page. */
+    global_state.active_output = OUTPUT_B;
+    snprintf(detail, sizeof(detail), "entry %d", matched(HOTKEY_MODIFIER, HOTKEY_TOGGLE, 0, 0));
+    check("typing into the other computer, switch output answers",
+          matched(HOTKEY_MODIFIER, HOTKEY_TOGGLE, 0, 0) == 0, detail);
+    snprintf(detail, sizeof(detail), "entry %d",
+             matched(KEYBOARD_MODIFIER_RIGHTCTRL, HID_KEY_K, 0, 0));
+    check("and so does the rest of the table",
+          matched(KEYBOARD_MODIFIER_RIGHTCTRL, HID_KEY_K, 0, 0) == 2, detail);
+
+    global_state.config_mode_active = false;
+    global_state.active_output = OUTPUT_A;
+    snprintf(detail, sizeof(detail), "entry %d",
+             matched(KEYBOARD_MODIFIER_RIGHTCTRL, HID_KEY_K, 0, 0));
+    check("out of config mode nothing is held back",
+          matched(KEYBOARD_MODIFIER_RIGHTCTRL, HID_KEY_K, 0, 0) == 2
+          && matched(HOTKEY_MODIFIER, HOTKEY_TOGGLE, 0, 0) == 0, detail);
+
     printf("\n%s\n", failures ? "FAILURES" : "ALL PASS");
     return failures ? 1 : 0;
 }

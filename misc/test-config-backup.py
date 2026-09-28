@@ -55,11 +55,11 @@ with sync_playwright() as p:
                   "  setValue(e, e.type === 'checkbox' ? (i % 2) : (i + 3))); markClean(); }")
 
     writable = page.evaluate("() => document.querySelectorAll('.api:not([readonly])').length")
-    # 48 of the firmware's 52 writable fields; the page deliberately does not expose
+    # 63 of the firmware's 67 writable fields; the page deliberately does not expose
     # output[].number (x2), config.version or hotkey_toggle - the last of which the
     # Shortcuts section supersedes. Config mode is listed in that section but has no field
     # of its own: it is fixed, and key 100 is retired in src/protocol.c to match.
-    check("page exposes 48 writable fields", writable == 48, writable)
+    check("page exposes 63 writable fields", writable == 63, writable)
 
     page.evaluate("() => exportHandler()")
     exported = json.loads(page.eval_on_selector("#backup-text", "e => e.value"))
@@ -91,6 +91,7 @@ with sync_playwright() as p:
     # Save writes every setting to both boards, changed or not: the page reads only the
     # board it is connected to, so it cannot tell whether the other board's copy matches.
     # Checked from a clean page, where nothing differs and the old comparison sent nothing.
+    # It then reads that board back, to show what it stored rather than what it was sent.
     # A direct report is 0xaa 0x55 <type> <key> ...; the copy for the other board is
     # 0xaa 0x55 <proxy> <type> <key> ...
     sent = page.evaluate("""async () => {
@@ -110,9 +111,10 @@ with sync_playwright() as p:
     check("Save writes every setting to the connected board, changed or not",
           direct == keys, direct)
     check("and every setting to the other board", proxied == keys, proxied)
-    last = [(b[2], b[3]) if b[2] == 23 else (b[2],) for b in sent[-2:]]
-    check("then stores both boards", last == [(23, 18), (18,)], last)
-    check("and sends nothing else", len(sent) == 2 * len(keys) + 2, len(sent))
+    last = [(b[2], b[3]) if b[2] == 23 else (b[2],) for b in sent[-3:]]
+    check("then stores both boards", last[:2] == [(23, 18), (18,)], last)
+    check("and reads the connected one back", last[2:] == [(22,)], last)
+    check("and sends nothing else", len(sent) == 2 * len(keys) + 3, len(sent))
 
     # Unknown keys are reported, not fatal.
     page.evaluate("() => importHandler()")

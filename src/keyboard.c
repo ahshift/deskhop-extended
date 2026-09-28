@@ -230,7 +230,10 @@ void hotkeys_apply_config(device_t *state) {
            since check_all_hotkeys hands the report to the first that fits. Refuse the stored
            one rather than let an action go quietly dead. Compared against the entries
            already decided this pass and against config mode; an entry further down that
-           collides is caught when its own turn comes, because by then this one is decided. */
+           collides is caught when its own turn comes, because by then this one is decided.
+           That holds only for a pass over the whole set, which is why the config API calls
+           this once on Save rather than after each shortcut it is sent: half a swap would
+           otherwise collide with the other half's old combination and be cleared. */
         if (packed) {
             hotkey_combo_t want = combo_of(packed);
             bool taken = same_combo(&config_combo, want.modifier, want.keys, want.key_count);
@@ -344,6 +347,16 @@ hotkey_combo_t *check_all_hotkeys(hid_keyboard_report_t *report, device_t *state
        would otherwise take the only way back to the page with it. */
     if (check_specific_hotkey(hotkeys[HOTKEY_CONFIG_IDX], report))
         return &hotkeys[HOTKEY_CONFIG_IDX];
+
+    /* The config page records a shortcut from the keystrokes that reach it, and a report an
+       entry answers is swallowed on the way. So while this board is in config mode and
+       typing into the computer the page runs on, nothing else answers and every combination
+       reaches the page as ordinary keys. Otherwise pressing one the board already has would
+       run it instead, including one the page has just turned off or moved, since nothing is
+       sent before Save. While it types into the other computer nothing can be recording, so
+       the table answers as usual, and Switch output can bring the keyboard back. */
+    if (state->config_mode_active && CURRENT_BOARD_IS_ACTIVE_OUTPUT)
+        return NULL;
 
     for (int n = 0; n < ARRAY_SIZE(hotkeys); n++) {
         /* Read once and matched as a copy, so a rewrite landing mid-loop cannot show this

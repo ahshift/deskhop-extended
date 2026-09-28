@@ -14,10 +14,18 @@
 
 #define MACOS_SWITCH_MOVE_X 10
 #define MACOS_SWITCH_MOVE_COUNT 5
+#define WRAP_STEP_ONTO 16
+#define WRAP_STEP_ACROSS 1000
+#define WRAP_STEPS_PER_SCREEN 16
 #define ACCEL_POINTS 7
 
 uint16_t get_jump_threshold(output_t *output, enum screen_pos_e direction) {
     const uint16_t NO_JUMP_THRESHOLD = 0;
+
+    /* With wrap-around, going away from the border on the last screen is a jump to another pc too */
+    if (global_state.config.wrap_around && output->pos == direction &&
+        output->screen_index >= output->screen_count)
+        return global_state.config.jump_threshold;
 
     /* If on non-main local screen, every possible switch is local */
     if (output->screen_index > 1)
@@ -118,10 +126,75 @@ float calculate_mouse_acceleration_factor(int32_t offset_x, int32_t offset_y) {
     return lower->factor + interpolation_pos * (upper->factor - lower->factor);
 }
 
+/* Uniform speed: how many pixels a count moves the pointer, slowed the way slow mouse slows
+   speed_x and speed_y. */
+static float uniform_pixels_per_count(device_t *state, uint8_t reduce_speed) {
+    uint16_t percent = state->config.pointer_speed;
+
+    if (percent < POINTER_SPEED_MIN || percent > POINTER_SPEED_MAX)
+        percent = POINTER_SPEED;
+
+    return percent / 100.0f / (1 << reduce_speed);
+}
+
+/* The resolution of the screen the pointer is on, or the default where nothing usable is
+   stored against it. */
+static screen_size_t current_screen_size(device_t *state) {
+    uint32_t      index = state->config.output[state->active_output].screen_index;
+    screen_size_t size  = {SCREEN_WIDTH, SCREEN_HEIGHT};
+
+    if (index >= 1 && index <= MAX_SCREENS_PER_OUTPUT) {
+        screen_size_t stored = state->config.screen_size[state->active_output][index - 1];
+
+        if (stored.width >= SCREEN_SIZE_MIN)
+            size.width = stored.width;
+
+        if (stored.height >= SCREEN_SIZE_MIN)
+            size.height = stored.height;
+    }
+
+    return size;
+}
+
+/* Uniform speed, one axis: the move in pixels, then in screen coordinates, where crossing the
+   screen from one edge to the other is size - 1 pixels.
+
+   On a Windows extra screen Windows moves the cursor itself, a pixel per count at its default
+   speed, so it is sent the pixels, whole, in place of the raw move. Where the pointer is then
+   follows from what was sent, which puts it where Windows has it and makes the outer edge the
+   real one. Everywhere else the board places the pointer itself. Either way the fraction that
+   did not make a whole step is carried into the next report, so a slow move is not lost. */
+static int uniform_offset(device_t *state, int axis, int32_t *move, float pixels_per_count, uint16_t size) {
+    float px = *move * pixels_per_count;
+
+    if (state->relative_mouse && !state->gaming_mode) {
+        float want = px + state->uniform_rest_px[axis];
+        float sent = roundf(want);
+
+        /* The report carries 16 bits. Past that, drop the rest rather than play it out
+           over the reports that follow. */
+        if (sent > INT16_MAX)
+            sent = INT16_MAX;
+        else if (sent < -INT16_MAX)
+            sent = -INT16_MAX;
+
+        state->uniform_rest_px[axis] = (fabsf(want - sent) < 1.0f) ? want - sent : 0.0f;
+        *move = (int32_t)sent;
+        px    = sent;
+    }
+
+    float units  = px * MAX_SCREEN_COORD / (size - 1) + state->uniform_rest_units[axis];
+    int   offset = (int)roundf(units);
+
+    state->uniform_rest_units[axis] = units - offset;
+    return offset;
+}
+
 /* Returns LEFT if need to jump left, RIGHT if right, NONE otherwise */
 enum screen_pos_e update_mouse_position(device_t *state, mouse_values_t *values) {
     output_t *current    = &state->config.output[state->active_output];
     uint8_t reduce_speed = 0;
+    int offset_x, offset_y;
 
     /* Check if we are configured to move slowly */
     if (state->mouse_zoom)
@@ -129,8 +202,17 @@ enum screen_pos_e update_mouse_position(device_t *state, mouse_values_t *values)
 
     /* Calculate movement */
     float acceleration_factor = calculate_mouse_acceleration_factor(values->move_x, values->move_y);
-    int offset_x = round(values->move_x * acceleration_factor * (current->speed_x >> reduce_speed));
-    int offset_y = round(values->move_y * acceleration_factor * (current->speed_y >> reduce_speed));
+
+    if (state->config.uniform_speed) {
+        float         pixels = uniform_pixels_per_count(state, reduce_speed) * acceleration_factor;
+        screen_size_t screen = current_screen_size(state);
+
+        offset_x = uniform_offset(state, 0, &values->move_x, pixels, screen.width);
+        offset_y = uniform_offset(state, 1, &values->move_y, pixels, screen.height);
+    } else {
+        offset_x = round(values->move_x * acceleration_factor * (current->speed_x >> reduce_speed));
+        offset_y = round(values->move_y * acceleration_factor * (current->speed_y >> reduce_speed));
+    }
 
     /* Determine if our upcoming movement would stay within the screen */
     enum screen_pos_e switch_direction = is_screen_switch_needed(current, state->pointer_x, offset_x);
@@ -290,6 +372,66 @@ void switch_virtual_desktop(device_t *state, output_t *output, int new_index, in
     reset_edge_tap(state);
 }
 
+/* Windows maps absolute coordinates onto its main screen only, so its other screens are reached
+   with relative movement: put the cursor on the main screen's edge, then walk it out until it
+   stops at the far side of the desktop, which is the last screen.
+
+   Windows stops a move that would carry the cursor off every screen at the edge of the screen it
+   is on. That is what ends the walk at the far side, but it also means no single move may jump a
+   whole screen: one that would end past the far side stops at the edge of the screen it started
+   on, so the eight pushes of the full range this used to send never left the main screen. So the
+   walk alternates two steps, and neither depends on how wide the screens are. A short one gets
+   from an edge onto the next screen, and a long one carries the cursor across the screen it is
+   on, or up to that screen's far edge and no further.
+
+   The short step is 16 counts: at least a pixel down to a sixteenth of Windows' default pointer
+   speed, and 56 at the fastest with acceleration off. The long step is 1000 counts, about what a
+   quick sweep of a real mouse reports at once, so acceleration treats it as it would that; with
+   acceleration off it is 1000 pixels at the default speed. Sixteen pairs for each screen past the
+   main one cover 16000 pixels at the default speed, or 4000 at a quarter of it, and each report
+   takes a millisecond on the wire. */
+void push_to_far_side(device_t *state, output_t *output, int direction) {
+    int16_t sign = (direction == LEFT) ? -1 : 1;
+
+    mouse_report_t edge   = {.x = state->pointer_x, .y = state->pointer_y, .mode = ABSOLUTE};
+    mouse_report_t onto   = {.x = sign * WRAP_STEP_ONTO, .mode = RELATIVE};
+    mouse_report_t across = {.x = sign * WRAP_STEP_ACROSS, .mode = RELATIVE};
+
+    output_mouse_report(&edge, state);
+
+    for (uint32_t i = 0; i < WRAP_STEPS_PER_SCREEN * (output->screen_count - 1); i++) {
+        output_mouse_report(&onto, state);
+        output_mouse_report(&across, state);
+    }
+}
+
+/* Past the outer edge of the last screen, wrap around to the far side of the other computer. Both
+   cursors move against the direction of travel: this one back onto its main screen, where every
+   other way out leaves it, and the other one out onto its last screen. */
+void wrap_to_another_pc(device_t *state, output_t *output, int direction) {
+    output_t *other = &state->config.output[1 - state->active_output];
+    int back        = (direction == LEFT) ? RIGHT : LEFT;
+
+    /* A Mac crosses its screens one at a time. Windows gets there with the park report, which is
+       absolute and so lands on its main screen. */
+    if (output->os == MACOS)
+        for (uint32_t i = output->screen_index; i > 1; i--)
+            switch_virtual_desktop_macos(state, back);
+
+    output->screen_index = 1;
+    switch_to_another_pc(state, output, 1 - state->active_output, direction);
+
+    if (other->os == MACOS)
+        for (uint32_t i = other->screen_index; i < other->screen_count; i++)
+            switch_virtual_desktop_macos(state, back);
+
+    else if (other->os == WINDOWS && other->screen_count > 1)
+        push_to_far_side(state, other, back);
+
+    other->screen_index   = other->screen_count;
+    state->relative_mouse = (other->os == WINDOWS && other->screen_count > 1);
+}
+
 /* Returns true if an actual-output switch is allowed to proceed right now.
 
    When the "double tap" feature is enabled, the first time the cursor presses
@@ -363,6 +505,15 @@ void do_screen_switch(device_t *state, int direction) {
     /* We want to jump away from the other computer, only possible if there is another screen to jump to */
     else if (output->screen_index < output->screen_count)
         switch_virtual_desktop(state, output, output->screen_index + 1, direction);
+
+    /* ... or wrap around to the far side of the other computer, unless a mouse button is held */
+    else if (state->config.wrap_around && !state->mouse_buttons) {
+        /* A jump to the other computer, so the double tap applies here as at the border. */
+        if (!edge_double_tap_ready(state, direction))
+            return;
+
+        wrap_to_another_pc(state, output, direction);
+    }
 }
 
 static inline bool extract_value(bool uses_id, int32_t *dst, report_val_t *src, uint8_t *raw_report, int len) {

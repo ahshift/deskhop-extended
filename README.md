@@ -69,6 +69,27 @@ configuration.</em></p>
 
 <p align="center"><img src="img/config-dtap.png" alt="The edge double-tap settings on the config page"></p>
 
+- **Wrap around at the outer edges** - optional: pushing the pointer past the outer edge of the
+  outermost screen, the side facing away from the other computer, takes it to the far edge of the
+  other computer's outermost screen, so it can keep going in one direction and cycle between the
+  two. Works with multiple screens per output: a Mac is stepped across its screens the way moving
+  between them does, and Windows is placed on its main screen and pushed out to its last one. Off
+  by default, set under Mouse on the page or in `src/include/user_config.h`; the jump threshold
+  and the edge double-tap apply as they do at the border.
+  [248f32d](https://github.com/mglushko/deskhop-extended/commit/248f32d),
+  [949ce27](https://github.com/mglushko/deskhop-extended/commit/949ce27)
+
+- **Same speed on every screen** - optional: Speed X and Y move the pointer a share of the screen,
+  so the same setting moves it further on a bigger one. On a Windows computer's extra screens,
+  where Windows moves the pointer and the board only follows it, that share also drifted from where
+  the pointer really was, and wrapping around left before it reached the outer edge. With Uniform
+  speed on, a count of mouse movement moves the pointer the same number of pixels on every screen,
+  from a resolution picked under each screen in the Arrangement diagram, and a Windows extra screen is
+  sent those pixels, so its outer edge is the real one. Off by default. Leave Windows at its default
+  pointer speed with Enhance pointer precision off; on a Mac, pick each screen's "looks like" size,
+  and on Linux, one screen the size of the whole desktop.
+  [fb83521](https://github.com/mglushko/deskhop-extended/commit/fb83521)
+
 - **The status LED can be told to go dark** - the LED marking the active board, a light on all
   night if your desk shares a room with a bed, can now put itself out after a set idle time, a set
   time since the output last changed, or both on their own timers. Off by default, and config
@@ -107,6 +128,14 @@ configuration.</em></p>
   other board held, so once the two copies drifted apart nothing on the page could bring them back
   short of Wipe Config. Save now writes every setting to both boards, changed or not.
   [f86c072](https://github.com/mglushko/deskhop-extended/commit/f86c072)
+- **Save keeps swapped shortcuts** - Save sends shortcuts one at a time, and the board used to
+  rebuild its table after each, checking every combination against rows not sent yet and still on
+  their old ones. A swap, or a combination moved to a row above the one giving it up, was refused
+  and cleared on the way while the page showed it saved. The board now checks the shortcuts
+  together when Save stores them, and the page reads everything back afterwards and names any
+  shortcut the board refused.
+  [c3c9ffe](https://github.com/mglushko/deskhop-extended/commit/c3c9ffe),
+  [0cfc1a7](https://github.com/mglushko/deskhop-extended/commit/0cfc1a7)
 - **A shortcut can be turned off** - press **Off** on any of the eleven settable rows and that
   shortcut stops working. The row reads *Disabled*, **Default** brings it back, and the
   combination it gave up is free for another shortcut to take. There was no way to do this
@@ -114,6 +143,14 @@ configuration.</em></p>
   `HID_KEY_F24`, on the grounds that few keyboards have one. Config mode is the one that cannot
   be turned off, for the same reason it cannot be reassigned.
   [a80bfc8](https://github.com/mglushko/deskhop-extended/commit/a80bfc8)
+- **Recording a shortcut no longer runs the old one** - the board ran any combination it already
+  had before the page could record it, and swallowed it. Pressing Switch output's own combination
+  moved the keyboard to the other computer, and the page, never seeing the key that completed it,
+  refused with *needs a key* or kept only the modifiers. That included a shortcut already turned
+  off on the page, since nothing reaches the device before Save. While the page is open and the
+  keyboard types into its computer, only config mode's combination runs now, and saved shortcuts
+  take effect once you press Exit.
+  [e3f4f63](https://github.com/mglushko/deskhop-extended/commit/e3f4f63)
 
 Wiping the configuration has no shortcut here at all - upstream's `Right Shift + F12 + D` is gone,
 since a combination that erases every setting is too easy to reach by accident. Wipe Config on the
@@ -163,9 +200,6 @@ being taken on trust.
   normal-mode node and brings config mode under the udev rule further down for the first time;
   `misc/cleanup-windows-ghosts.ps1` clears the nodes already registered.
   [4400d12](https://github.com/mglushko/deskhop-extended/commit/4400d12)
-- **Boot-protocol keyboard support** - the keyboard keeps working in pre-boot environments that only
-  speak the 8-byte HID boot protocol, such as UEFI setup and the BitLocker PIN prompt.
-  [814e186](https://github.com/mglushko/deskhop-extended/commit/814e186)
 - **Settings survive firmware changes** - upstream stores the configuration as a dump of `config_t`
   and discards it whenever `CURRENT_CONFIG_VERSION` moves, which adding a single field forces, so
   one new setting costs you all of them. This build stores `{key, length, value}` triples keyed by
@@ -177,7 +211,7 @@ being taken on trust.
 
 A board pushes its firmware onto the other one as soon as that one reports a lower version
 (`handle_heartbeat_msg`, once a second), and this build numbers itself above upstream on purpose -
-v1.10 reports `1110` against upstream v0.78's `178`. So flashing a single board back to
+v1.13 reports `1113` against upstream v0.80's `180`. So flashing a single board back to
 [hrvach/deskhop](https://github.com/hrvach/deskhop) only gets it overwritten again the moment the
 two are powered up together. Both boards have to be done, one at a time, while neither is running:
 

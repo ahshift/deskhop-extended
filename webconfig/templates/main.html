@@ -22,6 +22,11 @@
 
 {# MAX_SCREEN_COORD, from src/include/screen.h #}
 {% set MAX_COORD = 32767 %}
+{#- Resolutions offered for each screen, including the sizes MacBooks look like by default,
+    since a Mac is entered in points. Anything else is typed in. #}
+{% set RESOLUTIONS = [(1440, 900), (1512, 982), (1728, 1117), (1920, 1080), (1920, 1200),
+                      (2560, 1080), (2560, 1440), (2560, 1600), (3440, 1440), (3840, 2160),
+                      (5120, 1440)] %}
 
 {% macro api(item, o='', n='', type='hidden', extra='', cls='') -%}
 <input class="api {{ cls }}" type="{{ type }}" id="k{{ item.key }}" data-key="{{ item.key }}" data-type="{{ item.type }}" fetched-value=""{% if o %} data-o="{{ o }}"{% endif %}{% if n %} data-n="{{ n }}"{% endif %} {{ extra }}>
@@ -259,17 +264,44 @@
               </div>
             </div>
 
+            {#- Each screen picks its resolution just under its own stand. The numbers run left
+                to right as drawn, while the firmware counts screens out from the border, so
+                which screen a picker sets is worked out in refreshOutput from the count and side. #}
             <div class="diag" data-o="{{ o.id }}">
             {%- for n in [1, 2, 3] %}
               <div class="mon">
                 <div class="scr"><span class="scr-n">{{ n }}</span><i class="aband"></i></div>
                 <div class="neck"></div>
                 <div class="foot"></div>
+                <div class="res-f">
+                  <select class="res-pre" data-o="{{ o.id }}" data-mon="{{ n - 1 }}" aria-label="Resolution of screen {{ n }}">
+                  {%- for w, h in RESOLUTIONS %}
+                    <option value="{{ w }}x{{ h }}">{{ w }}&times;{{ h }}</option>
+                  {%- endfor %}
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
               </div>
             {%- endfor %}
             </div>
 
             <div class="cap" data-o="{{ o.id }}"></div>
+            <span class="hint res-note">Resolution requires Uniform speed to be on, under Shared
+              settings.</span>
+
+            {#- A resolution no preset has is typed here, one row per screen set to Custom. #}
+            <div class="res-custom uni-part">
+            {%- for n in [1, 2, 3] %}
+              <div class="res-row" data-o="{{ o.id }}" data-s="{{ n }}" hidden>
+                <span class="val">Screen <span class="res-n"></span></span>
+                {{ api(o.f['Screen ' ~ n ~ ' Width'], o.id, 'w' ~ n, 'number',
+                       'min="64" max="16384" step="1" aria-label="Width in pixels"', 'res-in') }}
+                <span class="res-x">&times;</span>
+                {{ api(o.f['Screen ' ~ n ~ ' Height'], o.id, 'h' ~ n, 'number',
+                       'min="64" max="16384" step="1" aria-label="Height in pixels"', 'res-in') }}
+              </div>
+            {%- endfor %}
+            </div>
 
             <div class="align">
               <div class="rowb">
@@ -325,8 +357,12 @@
             </div>
             <span class="hint">Where the pointer sits on this computer once you've switched away.</span>
 
-            {{ rng(o.f['Speed X'], o.id, 'spx', 'Speed X') }}
-            {{ rng(o.f['Speed Y'], o.id, 'spy', 'Speed Y') }}
+            <div class="spd-part">
+              {{ rng(o.f['Speed X'], o.id, 'spx', 'Speed X') }}
+              {{ rng(o.f['Speed Y'], o.id, 'spy', 'Speed Y') }}
+            </div>
+            <span class="hint spd-note" hidden>Uniform speed is on, so its speed under Shared
+              settings moves the pointer on every screen instead.</span>
 
           </div>
         {%- endfor %}
@@ -442,6 +478,32 @@
           {{ chk(C['Enable Acceleration'], 'Enable Acceleration',
                  'Carry the pointer further the faster the mouse moves, on a curve up to four times
                   the distance. Off passes the movement through as it comes.') }}
+          {{ chk(C['Wrap Around'], 'Wrap Around',
+                 'Let the pointer out past the outer edge of the outermost screen, the side facing away
+                  from the other computer, and in at the far edge of the other computer\'s outermost
+                  screen, so it can keep going in one direction. Off stops it at the outer edges. The
+                  jump threshold and double tap apply as at the border.') }}
+        </div>
+
+        <span class="lbl">Uniform speed</span>
+        <div class="grp">
+          <div class="sw-row">
+            <button type="button" class="sw" role="switch" aria-checked="false" data-for="k{{ C['Uniform Speed'].key }}"><span></span></button>
+            {{ api(C['Uniform Speed'], '', 'uniform', 'checkbox', 'hidden') }}
+            <span>Move the same distance on every screen</span>
+          </div>
+          <span class="hint">Off: each output's Speed X and Y, under Cursor, move the pointer a share
+            of the screen, so the same setting goes further on a bigger screen. On: a count of mouse
+            movement moves it the same number of pixels on every screen, from the resolution picked
+            under each screen in Arrangement, at the speed below. On is also what lets the board follow the pointer on a
+            Windows computer's extra screens, where Windows moves it: leave Windows' own pointer speed
+            at its default, 10 of 20, and Enhance pointer precision off. On a Mac, enter each screen's
+            "looks like" size from Displays; on Linux, one screen the size of the whole desktop.</span>
+          <div class="uni-part">
+            {{ rng(C['Pointer Speed'], '', 'pspeed', 'Speed', 'pcts') }}
+            <span class="hint">100% is a pixel per count, the speed Windows moves its own pointer at
+              by default.</span>
+          </div>
         </div>
 
         <span class="lbl">Device flags</span>
@@ -481,7 +543,9 @@
           <span class="hint">Two ways to change one. Click it and hold the combination you want,
             then let go - up to two keys besides the modifiers, and Esc on its own cancels. Or press
             <b>Pick</b> and assemble it without pressing anything. These are read by the board your
-            keyboard is plugged into, and act on that board. Each one needs a key besides the
+            keyboard is plugged into, and act on that board. While this page is open, none of them
+            run on this computer except config mode, so pressing one here records it instead, and
+            saved shortcuts take effect once you press <b>Exit</b>. Each one needs a key besides the
             modifiers, except <b>Slow mouse</b>, which the firmware is built without one for:
             modifiers on their own match everything typed while they are held, and would take
             the shortcuts below them with it.</span>
