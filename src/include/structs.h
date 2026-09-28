@@ -121,6 +121,9 @@ typedef struct {
     uint8_t uniform_speed;
     uint16_t pointer_speed;
     screen_size_t screen_size[NUM_SCREENS][MAX_SCREENS_PER_OUTPUT];
+
+    /* If not set to zero, gaming mode should be active by default */
+    uint8_t gaming_mode_default;
 } config_t;
 
 
