@@ -200,9 +200,6 @@ being taken on trust.
   normal-mode node and brings config mode under the udev rule further down for the first time;
   `misc/cleanup-windows-ghosts.ps1` clears the nodes already registered.
   [4400d12](https://github.com/mglushko/deskhop-extended/commit/4400d12)
-- **Boot-protocol keyboard support** - the keyboard keeps working in pre-boot environments that only
-  speak the 8-byte HID boot protocol, such as UEFI setup and the BitLocker PIN prompt.
-  [814e186](https://github.com/mglushko/deskhop-extended/commit/814e186)
 - **Settings survive firmware changes** - upstream stores the configuration as a dump of `config_t`
   and discards it whenever `CURRENT_CONFIG_VERSION` moves, which adding a single field forces, so
   one new setting costs you all of them. This build stores `{key, length, value}` triples keyed by
@@ -214,7 +211,7 @@ being taken on trust.
 
 A board pushes its firmware onto the other one as soon as that one reports a lower version
 (`handle_heartbeat_msg`, once a second), and this build numbers itself above upstream on purpose -
-v1.10 reports `1110` against upstream v0.78's `178`. So flashing a single board back to
+v1.13 reports `1113` against upstream v0.80's `180`. So flashing a single board back to
 [hrvach/deskhop](https://github.com/hrvach/deskhop) only gets it overwritten again the moment the
 two are powered up together. Both boards have to be done, one at a time, while neither is running:
 
