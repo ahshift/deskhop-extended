@@ -84,7 +84,7 @@ configuration.</em></p>
   where Windows moves the pointer and the board only follows it, that share also drifted from where
   the pointer really was, and wrapping around left before it reached the outer edge. With Uniform
   speed on, a count of mouse movement moves the pointer the same number of pixels on every screen,
-  from a resolution picked on each screen in the Arrangement diagram, and a Windows extra screen is
+  from a resolution picked under each screen in the Arrangement diagram, and a Windows extra screen is
   sent those pixels, so its outer edge is the real one. Off by default. Leave Windows at its default
   pointer speed with Enhance pointer precision off; on a Mac, pick each screen's "looks like" size,
   and on Linux, one screen the size of the whole desktop.

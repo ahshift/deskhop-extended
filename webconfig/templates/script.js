@@ -741,7 +741,7 @@ function refreshOutput(output) {
     band.style.height = Math.max(2, pct(bottom - top)) + '%';
   });
 
-  /* Resolution pickers, one on each screen in the diagram. The diagram numbers screens left
+  /* Resolution pickers, one under each screen in the diagram. The diagram numbers screens left
      to right and the firmware counts them out from the border, so each picker is told which
      screen it sets. It shows that screen's resolution, or Custom where no preset has it or
      Custom was picked, and a screen on Custom gets a row under the diagram to type it into,
@@ -870,7 +870,7 @@ function refreshUniform() {
 
   document.querySelectorAll('.spd-note').forEach(note => { note.hidden = !on; });
 
-  /* The pickers sit on the screens in the diagram rather than inside a part of their own. */
+  /* The pickers sit under the screens in the diagram rather than inside a part of their own. */
   document.querySelectorAll('.res-pre').forEach(pick => {
     pick.disabled = !on;
     pick.classList.toggle('off', !on);

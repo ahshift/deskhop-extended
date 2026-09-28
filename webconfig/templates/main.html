@@ -264,22 +264,21 @@
               </div>
             </div>
 
-            {#- Each screen picks its resolution on its own face. The numbers run left to right
-                as drawn, while the firmware counts screens out from the border, so which
-                screen a picker sets is worked out in refreshOutput from the count and side. #}
+            {#- Each screen picks its resolution just under its own stand. The numbers run left
+                to right as drawn, while the firmware counts screens out from the border, so
+                which screen a picker sets is worked out in refreshOutput from the count and side. #}
             <div class="diag" data-o="{{ o.id }}">
             {%- for n in [1, 2, 3] %}
               <div class="mon">
-                <div class="scr"><span class="scr-n">{{ n }}</span><i class="aband"></i>
-                  <select class="res-pre" data-o="{{ o.id }}" data-mon="{{ n - 1 }}" aria-label="Resolution of screen {{ n }}">
-                  {%- for w, h in RESOLUTIONS %}
-                    <option value="{{ w }}x{{ h }}">{{ w }}&times;{{ h }}</option>
-                  {%- endfor %}
-                    <option value="custom">Custom</option>
-                  </select>
-                </div>
+                <div class="scr"><span class="scr-n">{{ n }}</span><i class="aband"></i></div>
                 <div class="neck"></div>
                 <div class="foot"></div>
+                <select class="res-pre" data-o="{{ o.id }}" data-mon="{{ n - 1 }}" aria-label="Resolution of screen {{ n }}">
+                {%- for w, h in RESOLUTIONS %}
+                  <option value="{{ w }}x{{ h }}">{{ w }}&times;{{ h }}</option>
+                {%- endfor %}
+                  <option value="custom">Custom</option>
+                </select>
               </div>
             {%- endfor %}
             </div>
@@ -491,8 +490,8 @@
           </div>
           <span class="hint">Off: each output's Speed X and Y, under Cursor, move the pointer a share
             of the screen, so the same setting goes further on a bigger screen. On: a count of mouse
-            movement moves it the same number of pixels on every screen, from the resolution picked on
-            each screen under Arrangement, at the speed below. On is also what lets the board follow the pointer on a
+            movement moves it the same number of pixels on every screen, from the resolution picked
+            under each screen in Arrangement, at the speed below. On is also what lets the board follow the pointer on a
             Windows computer's extra screens, where Windows moves it: leave Windows' own pointer speed
             at its default, 10 of 20, and Enhance pointer precision off. On a Mac, enter each screen's
             "looks like" size from Displays; on Linux, one screen the size of the whole desktop.</span>
