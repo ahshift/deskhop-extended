@@ -870,8 +870,8 @@ function refreshUniform() {
 
   document.querySelectorAll('.spd-note').forEach(note => { note.hidden = !on; });
 
-  /* The pickers sit under the screens in the diagram rather than inside a part of their own,
-     and dim with their labels. The note under the diagram stays as it is: it says why. */
+  /* The pickers sit under the screens in the diagram rather than inside a part of their own.
+     The note under the diagram stays as it is: it says why they are dimmed. */
   document.querySelectorAll('.res-f').forEach(field => { field.classList.toggle('off', !on); });
   document.querySelectorAll('.res-pre').forEach(pick => { pick.disabled = !on; });
 }

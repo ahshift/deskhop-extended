@@ -273,15 +273,14 @@
                 <div class="scr"><span class="scr-n">{{ n }}</span><i class="aband"></i></div>
                 <div class="neck"></div>
                 <div class="foot"></div>
-                <label class="res-f">
-                  <span class="lbl">Resolution</span>
+                <div class="res-f">
                   <select class="res-pre" data-o="{{ o.id }}" data-mon="{{ n - 1 }}" aria-label="Resolution of screen {{ n }}">
                   {%- for w, h in RESOLUTIONS %}
                     <option value="{{ w }}x{{ h }}">{{ w }}&times;{{ h }}</option>
                   {%- endfor %}
                     <option value="custom">Custom</option>
                   </select>
-                </label>
+                </div>
               </div>
             {%- endfor %}
             </div>

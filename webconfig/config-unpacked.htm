@@ -278,11 +278,10 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
 }
 /* Each screen's resolution, for uniform speed, picked just under its stand in the diagram,
    as wide as the screen; one no preset has is typed into a row under the diagram. */
-.res-f { width: 100%; display: grid; gap: 3px; margin-top: 6px; text-align: center; }
-.res-f .lbl { font-size: 11px; }
+.res-f { width: 100%; margin-top: 6px; }
 .mon .res-pre {
-  width: 100%; height: 24px; padding: 0 4px;
-  font-size: 11.5px; text-align: center; text-align-last: center;
+  width: 100%; height: 28px; padding: 0 4px;
+  font-size: 13px; text-align: center; text-align-last: center;
   color: var(--fg); background: #fff;
   border: 1px solid var(--bd); border-radius: 3px;
 }
@@ -727,8 +726,7 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
                 <div class="scr"><span class="scr-n">1</span><i class="aband"></i></div>
                 <div class="neck"></div>
                 <div class="foot"></div>
-                <label class="res-f">
-                  <span class="lbl">Resolution</span>
+                <div class="res-f">
                   <select class="res-pre" data-o="A" data-mon="0" aria-label="Resolution of screen 1">
                     <option value="1440x900">1440&times;900</option>
                     <option value="1512x982">1512&times;982</option>
@@ -743,14 +741,13 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
                     <option value="5120x1440">5120&times;1440</option>
                     <option value="custom">Custom</option>
                   </select>
-                </label>
+                </div>
               </div>
               <div class="mon">
                 <div class="scr"><span class="scr-n">2</span><i class="aband"></i></div>
                 <div class="neck"></div>
                 <div class="foot"></div>
-                <label class="res-f">
-                  <span class="lbl">Resolution</span>
+                <div class="res-f">
                   <select class="res-pre" data-o="A" data-mon="1" aria-label="Resolution of screen 2">
                     <option value="1440x900">1440&times;900</option>
                     <option value="1512x982">1512&times;982</option>
@@ -765,14 +762,13 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
                     <option value="5120x1440">5120&times;1440</option>
                     <option value="custom">Custom</option>
                   </select>
-                </label>
+                </div>
               </div>
               <div class="mon">
                 <div class="scr"><span class="scr-n">3</span><i class="aband"></i></div>
                 <div class="neck"></div>
                 <div class="foot"></div>
-                <label class="res-f">
-                  <span class="lbl">Resolution</span>
+                <div class="res-f">
                   <select class="res-pre" data-o="A" data-mon="2" aria-label="Resolution of screen 3">
                     <option value="1440x900">1440&times;900</option>
                     <option value="1512x982">1512&times;982</option>
@@ -787,7 +783,7 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
                     <option value="5120x1440">5120&times;1440</option>
                     <option value="custom">Custom</option>
                   </select>
-                </label>
+                </div>
               </div>
             </div>
 
@@ -865,8 +861,7 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
                 <div class="scr"><span class="scr-n">1</span><i class="aband"></i></div>
                 <div class="neck"></div>
                 <div class="foot"></div>
-                <label class="res-f">
-                  <span class="lbl">Resolution</span>
+                <div class="res-f">
                   <select class="res-pre" data-o="B" data-mon="0" aria-label="Resolution of screen 1">
                     <option value="1440x900">1440&times;900</option>
                     <option value="1512x982">1512&times;982</option>
@@ -881,14 +876,13 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
                     <option value="5120x1440">5120&times;1440</option>
                     <option value="custom">Custom</option>
                   </select>
-                </label>
+                </div>
               </div>
               <div class="mon">
                 <div class="scr"><span class="scr-n">2</span><i class="aband"></i></div>
                 <div class="neck"></div>
                 <div class="foot"></div>
-                <label class="res-f">
-                  <span class="lbl">Resolution</span>
+                <div class="res-f">
                   <select class="res-pre" data-o="B" data-mon="1" aria-label="Resolution of screen 2">
                     <option value="1440x900">1440&times;900</option>
                     <option value="1512x982">1512&times;982</option>
@@ -903,14 +897,13 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
                     <option value="5120x1440">5120&times;1440</option>
                     <option value="custom">Custom</option>
                   </select>
-                </label>
+                </div>
               </div>
               <div class="mon">
                 <div class="scr"><span class="scr-n">3</span><i class="aband"></i></div>
                 <div class="neck"></div>
                 <div class="foot"></div>
-                <label class="res-f">
-                  <span class="lbl">Resolution</span>
+                <div class="res-f">
                   <select class="res-pre" data-o="B" data-mon="2" aria-label="Resolution of screen 3">
                     <option value="1440x900">1440&times;900</option>
                     <option value="1512x982">1512&times;982</option>
@@ -925,7 +918,7 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
                     <option value="5120x1440">5120&times;1440</option>
                     <option value="custom">Custom</option>
                   </select>
-                </label>
+                </div>
               </div>
             </div>
 
@@ -2494,8 +2487,8 @@ function refreshUniform() {
 
   document.querySelectorAll('.spd-note').forEach(note => { note.hidden = !on; });
 
-  /* The pickers sit under the screens in the diagram rather than inside a part of their own,
-     and dim with their labels. The note under the diagram stays as it is: it says why. */
+  /* The pickers sit under the screens in the diagram rather than inside a part of their own.
+     The note under the diagram stays as it is: it says why they are dimmed. */
   document.querySelectorAll('.res-f').forEach(field => { field.classList.toggle('off', !on); });
   document.querySelectorAll('.res-pre').forEach(pick => { pick.disabled = !on; });
 }
