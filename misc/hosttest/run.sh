@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Build and run the host-side tests. See test_config_store.c, test_hotkeys.c, test_mouse.c and
-# test_wrap_around.c.
+# Build and run the host-side tests. See test_config_store.c, test_hotkeys.c,
+# test_save_shortcuts.c, test_mouse.c and test_wrap_around.c.
 set -euo pipefail
 cd "$(dirname "$0")"
 root="$(git rev-parse --show-toplevel)"
@@ -8,11 +8,11 @@ out="$(mktemp -d)"; trap 'rm -rf "$out"' EXIT
 
 # shim/sdk stands in for the Pico SDK and TinyUSB where the firmware headers need a type
 # from them. The headers below are only reached for, never read: main.h includes them and
-# nothing either test calls goes near what they declare. Generated rather than committed,
+# nothing any test calls goes near what they declare. Generated rather than committed,
 # so an empty file that has to exist is not mistaken for one that says something.
-for header in pio_usb.h hardware/dma.h hardware/uart.h hardware/watchdog.h \
+for header in pio_usb.h hardware/dma.h hardware/uart.h \
               hardware/structs/ioqspi.h hardware/structs/sio.h hardware/sync.h \
-              pico/bootrom.h pico/multicore.h pico/unique_id.h; do
+              pico/multicore.h pico/unique_id.h; do
     mkdir -p "$out/sdk/$(dirname "$header")"
     echo '#pragma once' > "$out/sdk/$header"
 done
@@ -31,6 +31,13 @@ gcc -std=c11 -Wall -Wextra -Wno-unused-parameter -g -fsanitize=address,undefined
     test_hotkeys.c "$root/src/keyboard.c" "$root/src/constants.c" \
     "$root/src/protocol.c" -o "$out/test_hotkeys"
 
+# The same table again, reached the way the config page reaches it: through handlers.c,
+# which is why that file's handlers are linked here rather than stubbed as test_hotkeys does.
+gcc -std=c11 -Wall -Wextra -Wno-unused-parameter -g -fsanitize=address,undefined \
+    -I shim/sdk -I "$out/sdk" -I "$root/src/include" \
+    test_save_shortcuts.c "$root/src/handlers.c" "$root/src/keyboard.c" \
+    "$root/src/constants.c" "$root/src/protocol.c" -o "$out/test_save_shortcuts"
+
 # mouse.c on its own: the button combining it does reaches nothing outside this file, and
 # -lm is for the acceleration curve. Same include path as test_hotkeys, same reasons.
 gcc -std=c11 -Wall -Wextra -Wno-unused-parameter -g -fsanitize=address,undefined \
@@ -44,5 +51,6 @@ gcc -std=c11 -Wall -Wextra -Wno-unused-parameter -g -fsanitize=address,undefined
 
 "$out/test_config_store"
 "$out/test_hotkeys"
+"$out/test_save_shortcuts"
 "$out/test_mouse"
 "$out/test_wrap_around"

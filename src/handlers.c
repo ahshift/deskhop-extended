@@ -284,6 +284,14 @@ void handle_consumer_control_msg(uart_packet_t *packet, device_t *state) {
 
 /* Process request to store config to flash */
 void handle_save_config_msg(uart_packet_t *packet, device_t *state) {
+    /* The page writes every setting one at a time and then sends this, so this is the first
+       point where the shortcuts are all here together. Checked as each one arrived, a
+       combination would be compared against the rows not written yet, still on their old
+       ones, and a swap, or a combination moved to a row above the one giving it up, would be
+       refused and cleared on the way. Checked here, they are compared as the set the page
+       sent. What hotkeys_apply_config refuses it also clears, so flash gets what the table
+       holds. */
+    hotkeys_apply_config(state);
     save_config(state);
 }
 
@@ -321,12 +329,8 @@ void handle_api_msgs(uart_packet_t *packet, device_t *state) {
 
         memcpy(ptr, &packet->data[1], map->len);
 
-        /* hotkeys[] is a copy of the stored combos, so it has to be told. Asked of the
-           offset rather than the key, since the keys are no longer one run: one was
-           retired when its action lost its shortcut. */
-        if (map->offset >= offsetof(device_t, config.hotkey_cfg)
-            && map->offset < offsetof(device_t, config.hotkey_cfg) + sizeof(state->config.hotkey_cfg))
-            hotkeys_apply_config(state);
+        /* A shortcut is stored here but not put into use: hotkeys[] is rebuilt from the
+           stored combos on Save, in handle_save_config_msg, once all of them are in. */
     }
     else if (packet->type == GET_VAL_MSG) {
         uart_packet_t response = {.type=GET_VAL_MSG, .data={[0] = value_idx}};

@@ -230,7 +230,10 @@ void hotkeys_apply_config(device_t *state) {
            since check_all_hotkeys hands the report to the first that fits. Refuse the stored
            one rather than let an action go quietly dead. Compared against the entries
            already decided this pass and against config mode; an entry further down that
-           collides is caught when its own turn comes, because by then this one is decided. */
+           collides is caught when its own turn comes, because by then this one is decided.
+           That holds only for a pass over the whole set, which is why the config API calls
+           this once on Save rather than after each shortcut it is sent: half a swap would
+           otherwise collide with the other half's old combination and be cleared. */
         if (packed) {
             hotkey_combo_t want = combo_of(packed);
             bool taken = same_combo(&config_combo, want.modifier, want.keys, want.key_count);

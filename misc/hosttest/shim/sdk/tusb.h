@@ -28,6 +28,7 @@ typedef struct TU_ATTR_PACKED {
 #define HID_KEY_K         0x0E
 #define HID_KEY_L         0x0F
 #define HID_KEY_O         0x12
+#define HID_KEY_Q         0x14
 #define HID_KEY_S         0x16
 #define HID_KEY_X         0x1B
 #define HID_KEY_Y         0x1C
