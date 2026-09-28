@@ -184,8 +184,9 @@ being taken on trust.
 
 - **Short reports no longer read past the end** - a device can send a report shorter than its
   descriptor promised, and nothing checked. Four decode paths read past the end of the buffer: 774
-  of 1159 truncated reports overread before, none after. The bound on the bitmap walk went
-  upstream with #359; the other three are here only.
+  of 1159 truncated reports overread before, none after. Upstream has since bounded all of them
+  but the boot-protocol mouse: the bitmap walk with #359, and the field reads and the key array
+  with [3b9ac8c](https://github.com/hrvach/deskhop/commit/3b9ac8c), which came after v0.80.
   [fe908d0](https://github.com/mglushko/deskhop-extended/commit/fe908d0)
 - **Pico-PIO-USB fixes backported onto the vendored 0.5.3** - `calc_usb_crc16` moves into RAM, since
   it was the last thing on the interrupt path still running from flash while a board-to-board
