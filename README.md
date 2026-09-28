@@ -76,7 +76,8 @@ configuration.</em></p>
   between them does, and Windows is placed on its main screen and pushed out to its last one. Off
   by default, set under Mouse on the page or in `src/include/user_config.h`; the jump threshold
   and the edge double-tap apply as they do at the border.
-  [248f32d](https://github.com/mglushko/deskhop-extended/commit/248f32d)
+  [248f32d](https://github.com/mglushko/deskhop-extended/commit/248f32d),
+  [949ce27](https://github.com/mglushko/deskhop-extended/commit/949ce27)
 
 - **Same speed on every screen** - optional: Speed X and Y move the pointer a share of the screen,
   so the same setting moves it further on a bigger one. On a Windows computer's extra screens,
@@ -87,6 +88,7 @@ configuration.</em></p>
   sent those pixels, so its outer edge is the real one. Off by default. Leave Windows at its default
   pointer speed with Enhance pointer precision off; on a Mac, pick each screen's "looks like" size,
   and on Linux, one screen the size of the whole desktop.
+  [fb83521](https://github.com/mglushko/deskhop-extended/commit/fb83521)
 
 - **The status LED can be told to go dark** - the LED marking the active board, a light on all
   night if your desk shares a room with a bed, can now put itself out after a set idle time, a set
