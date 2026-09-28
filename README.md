@@ -116,6 +116,12 @@ configuration.</em></p>
   other board held, so once the two copies drifted apart nothing on the page could bring them back
   short of Wipe Config. Save now writes every setting to both boards, changed or not.
   [f86c072](https://github.com/mglushko/deskhop-extended/commit/f86c072)
+- **Save keeps swapped shortcuts** - Save sends shortcuts one at a time, and the board used to
+  rebuild its table after each, checking every combination against rows not sent yet and still on
+  their old ones. A swap, or a combination moved to a row above the one giving it up, was refused
+  and cleared on the way while the page showed it saved. The board now checks the shortcuts
+  together when Save stores them, and the page reads everything back afterwards and names any
+  shortcut the board refused.
 - **A shortcut can be turned off** - press **Off** on any of the eleven settable rows and that
   shortcut stops working. The row reads *Disabled*, **Default** brings it back, and the
   combination it gave up is free for another shortcut to take. There was no way to do this

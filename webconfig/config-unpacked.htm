@@ -1562,6 +1562,8 @@ function updateElement(key, event) {
 
     if (element.hasAttribute('data-fw-ver'))
       setValue(element, formatFwVersion(value));
+
+    checkKept(element);
   }
 }
 
@@ -1572,9 +1574,9 @@ async function handleInputReport(event) {
   updateElement(key, event);
 }
 
-/* Writes one control to both boards. Only saveHandler calls this - a set lands in the
-   live config the moment it arrives, and for a shortcut the device rebuilds its hotkey
-   table on the spot, so sending on edit would apply it before Save. */
+/* Writes one control to both boards. Only saveHandler calls this: most settings take
+   effect on the device the moment they arrive, so sending on edit would apply them before
+   Save. */
 async function writeValue(element) {
   var key = element.getAttribute('data-key');
   var dataType = element.getAttribute('data-type');
@@ -1618,7 +1620,12 @@ async function connectHandler() {
 /* Every setting goes to both boards, changed or not. The page reads only the board it is
    connected to, so comparing against that board says nothing about the other one: a
    setting that already matched here was never sent there, and a board whose copy had
-   drifted stayed that way until Wipe Config reset both. */
+   drifted stayed that way until Wipe Config reset both.
+
+   Then it reads everything back, so the page shows what the board stored rather than what
+   it was sent. The board checks the shortcuts as a set when it stores them and clears one
+   it refuses, which puts that row back on its default, and the page used to go on showing
+   the combination it had sent. */
 async function saveHandler() {
   if (!device || !device.opened)
     return;
@@ -1627,7 +1634,49 @@ async function saveHandler() {
     await writeValue(element);
 
   await sendReport(packetType.saveConfigMsg, [], true);
-  markClean();
+
+  /* As they went out: packValue writes a shortcut through setUint32, which reads an empty
+     field as 0, so that is what the board is answering to. */
+  const sent = {};
+
+  document.querySelectorAll('.hk[data-for]').forEach(view => {
+    const input = el(view.dataset.for);
+
+    sent[input.dataset.key] = Number(input.value) >>> 0;
+  });
+
+  el('hk-m').textContent = '';
+  await reloadFromDevice({ sent: sent, refused: [] });
+}
+
+/* The shortcuts the last Save sent, by key, while the read that follows it is answered, and
+   the rows the board refused so far. Null outside that read, so Read and Connect compare
+   nothing. The page runs the same checks before it stores anything, so a refusal takes an
+   Import, which writes to the fields without them. */
+var afterSave = null;
+
+function checkKept(element) {
+  if (!afterSave || !(element.dataset.key in afterSave.sent))
+    return;
+
+  if ((Number(element.value) >>> 0) !== afterSave.sent[element.dataset.key]) {
+    const view = document.querySelector(`.hk[data-for="${element.id}"]`);
+    const names = afterSave.refused;
+
+    names.push(view.closest('.hk-row').querySelector('.hk-n').textContent);
+
+    el('hk-m').textContent = names.length === 1
+      ? `The board refused the combination set for ${names[0]}, so that row is back on `
+        + 'its default.'
+      : `The board refused the combinations set for ${names.slice(0, -1).join(', ')} and `
+        + `${names[names.length - 1]}, so those rows are back on their defaults.`;
+    el('hk-m').scrollIntoView({ block: 'nearest' });
+  }
+
+  delete afterSave.sent[element.dataset.key];
+
+  if (!Object.keys(afterSave.sent).length)
+    afterSave = null;
 }
 
 async function blinkHandler() {
@@ -1926,10 +1975,11 @@ async function readHandler() {
     'Discard & reload');
 }
 
-async function reloadFromDevice() {
+async function reloadFromDevice(check = null) {
   if (!device || !device.opened)
     return;
 
+  afterSave = check;
   await sendReport(packetType.getValAllMsg);
   markClean();
 }

@@ -409,6 +409,66 @@ with sync_playwright() as p:
              for b in page.evaluate("() => __sent") if b[2] == 21}
     check("and Save writes it back as the same Off", again.get(96) == HOTKEY_OFF, again.get(96))
 
+    # ---- Save reads back what the board kept -------------------------------
+    # The board checks the shortcuts as a set when it stores them and clears one it refuses,
+    # which puts that row back on its default. The page runs the same checks before it stores
+    # anything, so it takes an Import to get one past them: applyImported writes the field
+    # directly.
+    def device_says(key, value):
+        # One answer to the read Save asks for, the way handleInputReport receives it:
+        # 0xaa 0x55 <type> <key> <value, little-endian> ...
+        page.evaluate("""([key, value]) => {
+            const bytes = new Uint8Array(12);
+            bytes.set([0xaa, 0x55, 20, key]);
+            new DataView(bytes.buffer).setUint32(4, value, true);
+            handleInputReport({data: new DataView(bytes.buffer)});
+        }""", [key, value])
+
+    def shortcut_fields():
+        fields = page.evaluate("""() => Object.fromEntries([...document.querySelectorAll('.hk[data-for]')]
+            .map(v => [el(v.dataset.for).dataset.key, Number(el(v.dataset.for).value)]))""")
+        return {int(key): value for key, value in fields.items()}
+
+    lock_both = 0x10 | (0x0f << 8)      # Right Ctrl + L, which Lock both screens is built with
+    page.evaluate("v => { __sent = []; markClean(); applyImported(el('k92'), v); }", lock_both)
+    page.evaluate("async () => { await saveHandler(); }")
+    order = [b[2] for b in page.evaluate("() => __sent")]
+    check("Save reads the board back once it has stored it", order[-2:] == [18, 22], order[-3:])
+
+    sent = shortcut_fields()
+    device_says(92, 0)                  # refused, and cleared back to the default
+    device_says(93, sent[93])           # kept
+    note = page.eval_on_selector('#hk-m', "e => e.textContent")
+    check("a shortcut the board refused is named", "Lock switching" in note, note)
+    check("one it kept is not", "Lock both screens" not in note, note)
+    check("and the row shows what the board holds",
+          page.locator('.hk[data-for="k92"]').text_content() == "Right Ctrl + K",
+          page.locator('.hk[data-for="k92"]').text_content())
+    check("which leaves the page clean, since it matches the board again",
+          page.evaluate("() => dirty") is False)
+
+    for key, value in sent.items():
+        if key not in (92, 93):
+            device_says(key, value)
+    check("the comparison ends once every shortcut has answered",
+          page.evaluate("() => afterSave === null"))
+
+    page.evaluate("async () => { el('hk-m').textContent = ''; await reloadFromDevice(); }")
+    device_says(92, 0x01 | (0x05 << 8))
+    check("and a read that is not after a Save names nothing",
+          page.eval_on_selector('#hk-m', "e => e.textContent") == "",
+          page.eval_on_selector('#hk-m', "e => e.textContent"))
+
+    # Config mode's own combination, which the board refuses on every row.
+    config_combo = 0x01 | 0x20 | (0x06 << 8) | (0x12 << 16)
+    page.evaluate("v => { applyImported(el('k92'), v); applyImported(el('k93'), v); }", config_combo)
+    page.evaluate("async () => { await saveHandler(); }")
+    device_says(92, 0)
+    device_says(93, 0)
+    note = page.eval_on_selector('#hk-m', "e => e.textContent")
+    check("two refused are named together",
+          "Lock switching and Lock both screens" in note and "those rows" in note, note)
+
     page.evaluate("() => { device = undefined; setConnected(true); }")
 
     # ---- export carries the new fields -------------------------------------
