@@ -276,13 +276,17 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
   font-size: 14px; text-align: right; color: var(--fg); background: #fff;
   border: 1px solid var(--bd); border-radius: 4px;
 }
-/* Each screen's resolution, for uniform speed, picked just under its stand in the diagram;
-   one no preset has is typed into a row under the diagram. */
+/* Each screen's resolution, for uniform speed, picked just under its stand in the diagram,
+   as wide as the screen; one no preset has is typed into a row under the diagram. */
+.res-f { width: 100%; display: grid; gap: 3px; margin-top: 6px; text-align: center; }
+.res-f .lbl { font-size: 11px; }
 .mon .res-pre {
-  max-width: 100%; height: 22px; margin-top: 6px; padding: 0 2px;
-  font-size: 11px; color: var(--fg); background: #fff;
+  width: 100%; height: 24px; padding: 0 4px;
+  font-size: 11.5px; text-align: center; text-align-last: center;
+  color: var(--fg); background: #fff;
   border: 1px solid var(--bd); border-radius: 3px;
 }
+.res-note { width: 100%; text-align: center; margin-bottom: 8px; }
 .res-custom { width: 100%; display: grid; gap: 6px; }
 .res-custom:has(.res-row:not([hidden])) { margin-bottom: 8px; }
 .res-row { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
@@ -723,62 +727,73 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
                 <div class="scr"><span class="scr-n">1</span><i class="aband"></i></div>
                 <div class="neck"></div>
                 <div class="foot"></div>
-                <select class="res-pre" data-o="A" data-mon="0" aria-label="Resolution of screen 1">
-                  <option value="1440x900">1440&times;900</option>
-                  <option value="1512x982">1512&times;982</option>
-                  <option value="1728x1117">1728&times;1117</option>
-                  <option value="1920x1080">1920&times;1080</option>
-                  <option value="1920x1200">1920&times;1200</option>
-                  <option value="2560x1080">2560&times;1080</option>
-                  <option value="2560x1440">2560&times;1440</option>
-                  <option value="2560x1600">2560&times;1600</option>
-                  <option value="3440x1440">3440&times;1440</option>
-                  <option value="3840x2160">3840&times;2160</option>
-                  <option value="5120x1440">5120&times;1440</option>
-                  <option value="custom">Custom</option>
-                </select>
+                <label class="res-f">
+                  <span class="lbl">Resolution</span>
+                  <select class="res-pre" data-o="A" data-mon="0" aria-label="Resolution of screen 1">
+                    <option value="1440x900">1440&times;900</option>
+                    <option value="1512x982">1512&times;982</option>
+                    <option value="1728x1117">1728&times;1117</option>
+                    <option value="1920x1080">1920&times;1080</option>
+                    <option value="1920x1200">1920&times;1200</option>
+                    <option value="2560x1080">2560&times;1080</option>
+                    <option value="2560x1440">2560&times;1440</option>
+                    <option value="2560x1600">2560&times;1600</option>
+                    <option value="3440x1440">3440&times;1440</option>
+                    <option value="3840x2160">3840&times;2160</option>
+                    <option value="5120x1440">5120&times;1440</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </label>
               </div>
               <div class="mon">
                 <div class="scr"><span class="scr-n">2</span><i class="aband"></i></div>
                 <div class="neck"></div>
                 <div class="foot"></div>
-                <select class="res-pre" data-o="A" data-mon="1" aria-label="Resolution of screen 2">
-                  <option value="1440x900">1440&times;900</option>
-                  <option value="1512x982">1512&times;982</option>
-                  <option value="1728x1117">1728&times;1117</option>
-                  <option value="1920x1080">1920&times;1080</option>
-                  <option value="1920x1200">1920&times;1200</option>
-                  <option value="2560x1080">2560&times;1080</option>
-                  <option value="2560x1440">2560&times;1440</option>
-                  <option value="2560x1600">2560&times;1600</option>
-                  <option value="3440x1440">3440&times;1440</option>
-                  <option value="3840x2160">3840&times;2160</option>
-                  <option value="5120x1440">5120&times;1440</option>
-                  <option value="custom">Custom</option>
-                </select>
+                <label class="res-f">
+                  <span class="lbl">Resolution</span>
+                  <select class="res-pre" data-o="A" data-mon="1" aria-label="Resolution of screen 2">
+                    <option value="1440x900">1440&times;900</option>
+                    <option value="1512x982">1512&times;982</option>
+                    <option value="1728x1117">1728&times;1117</option>
+                    <option value="1920x1080">1920&times;1080</option>
+                    <option value="1920x1200">1920&times;1200</option>
+                    <option value="2560x1080">2560&times;1080</option>
+                    <option value="2560x1440">2560&times;1440</option>
+                    <option value="2560x1600">2560&times;1600</option>
+                    <option value="3440x1440">3440&times;1440</option>
+                    <option value="3840x2160">3840&times;2160</option>
+                    <option value="5120x1440">5120&times;1440</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </label>
               </div>
               <div class="mon">
                 <div class="scr"><span class="scr-n">3</span><i class="aband"></i></div>
                 <div class="neck"></div>
                 <div class="foot"></div>
-                <select class="res-pre" data-o="A" data-mon="2" aria-label="Resolution of screen 3">
-                  <option value="1440x900">1440&times;900</option>
-                  <option value="1512x982">1512&times;982</option>
-                  <option value="1728x1117">1728&times;1117</option>
-                  <option value="1920x1080">1920&times;1080</option>
-                  <option value="1920x1200">1920&times;1200</option>
-                  <option value="2560x1080">2560&times;1080</option>
-                  <option value="2560x1440">2560&times;1440</option>
-                  <option value="2560x1600">2560&times;1600</option>
-                  <option value="3440x1440">3440&times;1440</option>
-                  <option value="3840x2160">3840&times;2160</option>
-                  <option value="5120x1440">5120&times;1440</option>
-                  <option value="custom">Custom</option>
-                </select>
+                <label class="res-f">
+                  <span class="lbl">Resolution</span>
+                  <select class="res-pre" data-o="A" data-mon="2" aria-label="Resolution of screen 3">
+                    <option value="1440x900">1440&times;900</option>
+                    <option value="1512x982">1512&times;982</option>
+                    <option value="1728x1117">1728&times;1117</option>
+                    <option value="1920x1080">1920&times;1080</option>
+                    <option value="1920x1200">1920&times;1200</option>
+                    <option value="2560x1080">2560&times;1080</option>
+                    <option value="2560x1440">2560&times;1440</option>
+                    <option value="2560x1600">2560&times;1600</option>
+                    <option value="3440x1440">3440&times;1440</option>
+                    <option value="3840x2160">3840&times;2160</option>
+                    <option value="5120x1440">5120&times;1440</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </label>
               </div>
             </div>
 
             <div class="cap" data-o="A"></div>
+            <span class="hint res-note">Resolution requires Uniform speed to be on, under Shared
+              settings.</span>
             <div class="res-custom uni-part">
               <div class="res-row" data-o="A" data-s="1" hidden>
                 <span class="val">Screen <span class="res-n"></span></span>
@@ -850,62 +865,73 @@ input[type=range][disabled] { accent-color: var(--grey); cursor: default; }
                 <div class="scr"><span class="scr-n">1</span><i class="aband"></i></div>
                 <div class="neck"></div>
                 <div class="foot"></div>
-                <select class="res-pre" data-o="B" data-mon="0" aria-label="Resolution of screen 1">
-                  <option value="1440x900">1440&times;900</option>
-                  <option value="1512x982">1512&times;982</option>
-                  <option value="1728x1117">1728&times;1117</option>
-                  <option value="1920x1080">1920&times;1080</option>
-                  <option value="1920x1200">1920&times;1200</option>
-                  <option value="2560x1080">2560&times;1080</option>
-                  <option value="2560x1440">2560&times;1440</option>
-                  <option value="2560x1600">2560&times;1600</option>
-                  <option value="3440x1440">3440&times;1440</option>
-                  <option value="3840x2160">3840&times;2160</option>
-                  <option value="5120x1440">5120&times;1440</option>
-                  <option value="custom">Custom</option>
-                </select>
+                <label class="res-f">
+                  <span class="lbl">Resolution</span>
+                  <select class="res-pre" data-o="B" data-mon="0" aria-label="Resolution of screen 1">
+                    <option value="1440x900">1440&times;900</option>
+                    <option value="1512x982">1512&times;982</option>
+                    <option value="1728x1117">1728&times;1117</option>
+                    <option value="1920x1080">1920&times;1080</option>
+                    <option value="1920x1200">1920&times;1200</option>
+                    <option value="2560x1080">2560&times;1080</option>
+                    <option value="2560x1440">2560&times;1440</option>
+                    <option value="2560x1600">2560&times;1600</option>
+                    <option value="3440x1440">3440&times;1440</option>
+                    <option value="3840x2160">3840&times;2160</option>
+                    <option value="5120x1440">5120&times;1440</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </label>
               </div>
               <div class="mon">
                 <div class="scr"><span class="scr-n">2</span><i class="aband"></i></div>
                 <div class="neck"></div>
                 <div class="foot"></div>
-                <select class="res-pre" data-o="B" data-mon="1" aria-label="Resolution of screen 2">
-                  <option value="1440x900">1440&times;900</option>
-                  <option value="1512x982">1512&times;982</option>
-                  <option value="1728x1117">1728&times;1117</option>
-                  <option value="1920x1080">1920&times;1080</option>
-                  <option value="1920x1200">1920&times;1200</option>
-                  <option value="2560x1080">2560&times;1080</option>
-                  <option value="2560x1440">2560&times;1440</option>
-                  <option value="2560x1600">2560&times;1600</option>
-                  <option value="3440x1440">3440&times;1440</option>
-                  <option value="3840x2160">3840&times;2160</option>
-                  <option value="5120x1440">5120&times;1440</option>
-                  <option value="custom">Custom</option>
-                </select>
+                <label class="res-f">
+                  <span class="lbl">Resolution</span>
+                  <select class="res-pre" data-o="B" data-mon="1" aria-label="Resolution of screen 2">
+                    <option value="1440x900">1440&times;900</option>
+                    <option value="1512x982">1512&times;982</option>
+                    <option value="1728x1117">1728&times;1117</option>
+                    <option value="1920x1080">1920&times;1080</option>
+                    <option value="1920x1200">1920&times;1200</option>
+                    <option value="2560x1080">2560&times;1080</option>
+                    <option value="2560x1440">2560&times;1440</option>
+                    <option value="2560x1600">2560&times;1600</option>
+                    <option value="3440x1440">3440&times;1440</option>
+                    <option value="3840x2160">3840&times;2160</option>
+                    <option value="5120x1440">5120&times;1440</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </label>
               </div>
               <div class="mon">
                 <div class="scr"><span class="scr-n">3</span><i class="aband"></i></div>
                 <div class="neck"></div>
                 <div class="foot"></div>
-                <select class="res-pre" data-o="B" data-mon="2" aria-label="Resolution of screen 3">
-                  <option value="1440x900">1440&times;900</option>
-                  <option value="1512x982">1512&times;982</option>
-                  <option value="1728x1117">1728&times;1117</option>
-                  <option value="1920x1080">1920&times;1080</option>
-                  <option value="1920x1200">1920&times;1200</option>
-                  <option value="2560x1080">2560&times;1080</option>
-                  <option value="2560x1440">2560&times;1440</option>
-                  <option value="2560x1600">2560&times;1600</option>
-                  <option value="3440x1440">3440&times;1440</option>
-                  <option value="3840x2160">3840&times;2160</option>
-                  <option value="5120x1440">5120&times;1440</option>
-                  <option value="custom">Custom</option>
-                </select>
+                <label class="res-f">
+                  <span class="lbl">Resolution</span>
+                  <select class="res-pre" data-o="B" data-mon="2" aria-label="Resolution of screen 3">
+                    <option value="1440x900">1440&times;900</option>
+                    <option value="1512x982">1512&times;982</option>
+                    <option value="1728x1117">1728&times;1117</option>
+                    <option value="1920x1080">1920&times;1080</option>
+                    <option value="1920x1200">1920&times;1200</option>
+                    <option value="2560x1080">2560&times;1080</option>
+                    <option value="2560x1440">2560&times;1440</option>
+                    <option value="2560x1600">2560&times;1600</option>
+                    <option value="3440x1440">3440&times;1440</option>
+                    <option value="3840x2160">3840&times;2160</option>
+                    <option value="5120x1440">5120&times;1440</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </label>
               </div>
             </div>
 
             <div class="cap" data-o="B"></div>
+            <span class="hint res-note">Resolution requires Uniform speed to be on, under Shared
+              settings.</span>
             <div class="res-custom uni-part">
               <div class="res-row" data-o="B" data-s="1" hidden>
                 <span class="val">Screen <span class="res-n"></span></span>
@@ -2468,11 +2494,10 @@ function refreshUniform() {
 
   document.querySelectorAll('.spd-note').forEach(note => { note.hidden = !on; });
 
-  /* The pickers sit under the screens in the diagram rather than inside a part of their own. */
-  document.querySelectorAll('.res-pre').forEach(pick => {
-    pick.disabled = !on;
-    pick.classList.toggle('off', !on);
-  });
+  /* The pickers sit under the screens in the diagram rather than inside a part of their own,
+     and dim with their labels. The note under the diagram stays as it is: it says why. */
+  document.querySelectorAll('.res-f').forEach(field => { field.classList.toggle('off', !on); });
+  document.querySelectorAll('.res-pre').forEach(pick => { pick.disabled = !on; });
 }
 
 /* Screens Custom was picked for, by output and firmware screen number, so their rows stay open

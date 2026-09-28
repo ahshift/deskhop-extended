@@ -870,11 +870,10 @@ function refreshUniform() {
 
   document.querySelectorAll('.spd-note').forEach(note => { note.hidden = !on; });
 
-  /* The pickers sit under the screens in the diagram rather than inside a part of their own. */
-  document.querySelectorAll('.res-pre').forEach(pick => {
-    pick.disabled = !on;
-    pick.classList.toggle('off', !on);
-  });
+  /* The pickers sit under the screens in the diagram rather than inside a part of their own,
+     and dim with their labels. The note under the diagram stays as it is: it says why. */
+  document.querySelectorAll('.res-f').forEach(field => { field.classList.toggle('off', !on); });
+  document.querySelectorAll('.res-pre').forEach(pick => { pick.disabled = !on; });
 }
 
 /* Screens Custom was picked for, by output and firmware screen number, so their rows stay open

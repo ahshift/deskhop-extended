@@ -273,17 +273,22 @@
                 <div class="scr"><span class="scr-n">{{ n }}</span><i class="aband"></i></div>
                 <div class="neck"></div>
                 <div class="foot"></div>
-                <select class="res-pre" data-o="{{ o.id }}" data-mon="{{ n - 1 }}" aria-label="Resolution of screen {{ n }}">
-                {%- for w, h in RESOLUTIONS %}
-                  <option value="{{ w }}x{{ h }}">{{ w }}&times;{{ h }}</option>
-                {%- endfor %}
-                  <option value="custom">Custom</option>
-                </select>
+                <label class="res-f">
+                  <span class="lbl">Resolution</span>
+                  <select class="res-pre" data-o="{{ o.id }}" data-mon="{{ n - 1 }}" aria-label="Resolution of screen {{ n }}">
+                  {%- for w, h in RESOLUTIONS %}
+                    <option value="{{ w }}x{{ h }}">{{ w }}&times;{{ h }}</option>
+                  {%- endfor %}
+                    <option value="custom">Custom</option>
+                  </select>
+                </label>
               </div>
             {%- endfor %}
             </div>
 
             <div class="cap" data-o="{{ o.id }}"></div>
+            <span class="hint res-note">Resolution requires Uniform speed to be on, under Shared
+              settings.</span>
 
             {#- A resolution no preset has is typed here, one row per screen set to Custom. #}
             <div class="res-custom uni-part">
