@@ -6,7 +6,8 @@
  * edge of the other computer's outermost screen. These are the rules that jump follows:
  * where it lands, what holds it back like a border switch, and how the cursors of an output
  * with several screens are moved across them, a Mac one screen at a time and Windows by a
- * push of relative movement.
+ * walk of relative steps, checked against a model of how Windows moves its cursor for screens
+ * of any width.
  *
  * Driven in boot protocol, as test_mouse.c is, so a report is just buttons and a move.
  * Defaults as src/defaults.c has them: B on the left, A on the right, speed 16 and no
@@ -117,6 +118,51 @@ static int is_mac_step(const mouse_report_t *log, int at, int direction) {
             return 0;
 
     return 1;
+}
+
+/* Where Windows leaves the cursor after the reports a wrap sent it, as far as can be told from
+   how it behaves. Absolute coordinates land on the main screen. A relative move goes where it
+   points if that is on a screen, and otherwise stops at the edge of the screen the cursor is on,
+   the same stop that holds a cursor where two screens of different heights do not meet.
+
+   Measured outward from the border: the main screen covers the first widths[0] pixels, the next
+   screen out the widths[1] after those, and so on, all at the height the walk runs along. Outward
+   is the way the walk heads, left for an output on the left. speed is Windows' pointer speed with
+   acceleration off, 1.0 being its default. True if the cursor ends on the last screen's outer
+   edge. */
+static int lands_on_far_edge(const mouse_report_t *log, int n, const int *widths, int screens,
+                             double speed, int outward) {
+    double total = 0, at = 0;
+
+    for (int s = 0; s < screens; s++)
+        total += widths[s];
+
+    for (int i = 0; i < n; i++) {
+        if (log[i].mode == ABSOLUTE) {
+            double x = (double)log[i].x / MAX_SCREEN_COORD;
+
+            at = ((outward == LEFT) ? 1.0 - x : x) * (widths[0] - 1);
+            continue;
+        }
+
+        double to = at + ((outward == LEFT) ? -log[i].x : log[i].x) * speed;
+
+        if (to >= 0 && to <= total - 1) {
+            at = to;
+            continue;
+        }
+
+        /* Off every screen, so it stops at an edge of the screen it is on. */
+        int    on   = 0;
+        double from = 0;
+
+        while (on < screens - 1 && at >= from + widths[on])
+            from += widths[on++];
+
+        at = (to < from) ? from : from + widths[on] - 1;
+    }
+
+    return at >= total - 1.5;
 }
 
 /* Keep moving one way and write down every output and screen the pointer passes through, as
@@ -258,7 +304,28 @@ int main(void) {
     printf("\n  Windows with more than one screen\n\n");
 
     /* Windows puts absolute coordinates on its main screen only, so the cursor is placed on
-       that screen's edge at its height and pushed the rest of the way. */
+       that screen's edge at its height and walked the rest of the way, in pairs of a short step
+       and a long one. This first desk is the one it was found on: one screen on the right and two
+       Windows screens on the left. */
+    reset_state(1, 1, 2);
+    global_state.config.output[OUTPUT_B].os = WINDOWS;
+    place(OUTPUT_A, MAX_SCREEN_COORD);
+    global_state.pointer_y = 1000;
+    forget_output();
+    move(10, 0);
+    check("arriving on two-screen Windows lands on its far screen, in relative mode",
+          ACTIVE == OUTPUT_B && SCREEN(OUTPUT_B) == 2 && RELATIVE_ON);
+    {
+        int ok = nforwarded == 1 + 2 * 16 && forwarded[0].mode == ABSOLUTE
+                 && forwarded[0].x == MIN_SCREEN_COORD && forwarded[0].y == 1000;
+
+        for (int i = 1; i < 1 + 2 * 16; i++)
+            ok &= forwarded[i].mode == RELATIVE && forwarded[i].y == 0
+                  && forwarded[i].x == ((i % 2) ? -16 : -1000);
+
+        check("placed on the main screen's edge at its height, then 16 pairs of 16 and 1000 left", ok);
+    }
+
     reset_state(1, 1, 3);
     global_state.config.output[OUTPUT_B].os = WINDOWS;
     place(OUTPUT_A, MAX_SCREEN_COORD);
@@ -267,18 +334,10 @@ int main(void) {
     move(10, 0);
     check("arriving on three-screen Windows lands on its last screen, in relative mode",
           ACTIVE == OUTPUT_B && SCREEN(OUTPUT_B) == 3 && RELATIVE_ON);
-    {
-        int ok = nforwarded == 9 && forwarded[0].mode == ABSOLUTE
-                 && forwarded[0].x == MIN_SCREEN_COORD && forwarded[0].y == 1000;
-
-        for (int i = 1; i < 9; i++)
-            ok &= forwarded[i].mode == RELATIVE && forwarded[i].x == -MAX_SCREEN_COORD
-                  && forwarded[i].y == 0;
-
-        check("placed on the main screen's edge at its height, then pushed left eight times", ok);
-    }
+    check("with twice the pairs for two screens to cross", nforwarded == 1 + 2 * 32);
     move(10, 0);
-    check("and the next report is relative", nforwarded == 10 && forwarded[9].mode == RELATIVE);
+    check("and the next report is relative",
+          nforwarded == 2 + 2 * 32 && forwarded[1 + 2 * 32].mode == RELATIVE);
 
     /* From there back to the border as the virtual desktop code already does it: relative
        until the main screen, absolute on it, and over the border to A. */
@@ -294,6 +353,61 @@ int main(void) {
         }
         check("moving right crosses B2 relative and B1 absolute", relative_on_b2 && absolute_on_b1);
         check("then the border takes it to A", ACTIVE == OUTPUT_A && X == MIN_SCREEN_COORD && !RELATIVE_ON);
+    }
+
+    printf("\n  Windows, whatever its screens measure\n\n");
+
+    /* The walk replayed against how Windows moves a cursor, for screens of any width and pointer
+       speeds either side of the default. No single move may jump a whole screen, since one that
+       would end past the far side stops where it started: that is what the old walk did. */
+    {
+        const struct {
+            int screens, widths[3];
+            double speed;
+            const char *name;
+        } desks[] = {
+            {2, {2560, 2560}, 1.0, "two 2560 screens, the desk it was found on"},
+            {2, {1920, 7680}, 1.0, "a 7680 screen out past a 1920 one"},
+            {2, {1920, 7680}, 0.5, "the same at half the default speed"},
+            {2, {3840, 800}, 3.5, "an 800 screen out past a 3840 one at the fastest speed"},
+            {2, {2560, 3840}, 0.25, "a 3840 screen at a quarter of the default speed"},
+            {3, {2560, 1280, 3840}, 1.0, "three screens of three widths"},
+        };
+
+        for (size_t d = 0; d < sizeof(desks) / sizeof(desks[0]); d++) {
+            reset_state(1, 1, desks[d].screens);
+            global_state.config.output[OUTPUT_B].os = WINDOWS;
+            place(OUTPUT_A, MAX_SCREEN_COORD);
+            forget_output();
+            move(10, 0);
+            check(desks[d].name, lands_on_far_edge(forwarded, nforwarded, desks[d].widths,
+                                                   desks[d].screens, desks[d].speed, LEFT));
+        }
+    }
+    {
+        const int widths[2] = {2560, 2560};
+        mouse_report_t old[9] = {{.x = MIN_SCREEN_COORD, .mode = ABSOLUTE}};
+
+        for (int i = 1; i < 9; i++)
+            old[i] = (mouse_report_t){.x = -MAX_SCREEN_COORD, .mode = RELATIVE};
+
+        check("where eight pushes of the full range never left the main screen",
+              !lands_on_far_edge(old, 9, widths, 2, 1.0, LEFT));
+    }
+
+    /* And the other way round: going left past B's outer edge onto Windows screens on the right,
+       which this board drives itself. */
+    reset_state(1, 2, 1);
+    global_state.config.output[OUTPUT_A].os = WINDOWS;
+    place(OUTPUT_B, MIN_SCREEN_COORD);
+    forget_output();
+    move(-10, 0);
+    {
+        const int widths[2] = {2560, 5120};
+
+        check("going left onto two Windows screens on the right lands on the far one",
+              ACTIVE == OUTPUT_A && SCREEN(OUTPUT_A) == 2
+                  && lands_on_far_edge(queued, nqueued, widths, 2, 1.0, RIGHT));
     }
 
     /* Leaving from a Windows extra screen: the parking report is absolute, so it lands on the

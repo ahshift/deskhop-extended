@@ -14,7 +14,9 @@
 
 #define MACOS_SWITCH_MOVE_X 10
 #define MACOS_SWITCH_MOVE_COUNT 5
-#define WRAP_PUSH_COUNT 8
+#define WRAP_STEP_ONTO 16
+#define WRAP_STEP_ACROSS 1000
+#define WRAP_STEPS_PER_SCREEN 16
 #define ACCEL_POINTS 7
 
 uint16_t get_jump_threshold(output_t *output, enum screen_pos_e direction) {
@@ -297,16 +299,36 @@ void switch_virtual_desktop(device_t *state, output_t *output, int new_index, in
 }
 
 /* Windows maps absolute coordinates onto its main screen only, so its other screens are reached
-   with relative movement: put the cursor on the main screen's edge, then push it until it stops
-   at the far side of the desktop, which is the last screen */
-void push_to_far_side(device_t *state, int direction) {
-    mouse_report_t edge = {.x = state->pointer_x, .y = state->pointer_y, .mode = ABSOLUTE};
-    mouse_report_t push = {.x = (direction == LEFT) ? -MAX_SCREEN_COORD : MAX_SCREEN_COORD, .mode = RELATIVE};
+   with relative movement: put the cursor on the main screen's edge, then walk it out until it
+   stops at the far side of the desktop, which is the last screen.
+
+   Windows stops a move that would carry the cursor off every screen at the edge of the screen it
+   is on. That is what ends the walk at the far side, but it also means no single move may jump a
+   whole screen: one that would end past the far side stops at the edge of the screen it started
+   on, so the eight pushes of the full range this used to send never left the main screen. So the
+   walk alternates two steps, and neither depends on how wide the screens are. A short one gets
+   from an edge onto the next screen, and a long one carries the cursor across the screen it is
+   on, or up to that screen's far edge and no further.
+
+   The short step is 16 counts: at least a pixel down to a sixteenth of Windows' default pointer
+   speed, and 56 at the fastest with acceleration off. The long step is 1000 counts, about what a
+   quick sweep of a real mouse reports at once, so acceleration treats it as it would that; with
+   acceleration off it is 1000 pixels at the default speed. Sixteen pairs for each screen past the
+   main one cover 16000 pixels at the default speed, or 4000 at a quarter of it, and each report
+   takes a millisecond on the wire. */
+void push_to_far_side(device_t *state, output_t *output, int direction) {
+    int16_t sign = (direction == LEFT) ? -1 : 1;
+
+    mouse_report_t edge   = {.x = state->pointer_x, .y = state->pointer_y, .mode = ABSOLUTE};
+    mouse_report_t onto   = {.x = sign * WRAP_STEP_ONTO, .mode = RELATIVE};
+    mouse_report_t across = {.x = sign * WRAP_STEP_ACROSS, .mode = RELATIVE};
 
     output_mouse_report(&edge, state);
 
-    for (int i = 0; i < WRAP_PUSH_COUNT; i++)
-        output_mouse_report(&push, state);
+    for (uint32_t i = 0; i < WRAP_STEPS_PER_SCREEN * (output->screen_count - 1); i++) {
+        output_mouse_report(&onto, state);
+        output_mouse_report(&across, state);
+    }
 }
 
 /* Past the outer edge of the last screen, wrap around to the far side of the other computer. Both
@@ -330,7 +352,7 @@ void wrap_to_another_pc(device_t *state, output_t *output, int direction) {
             switch_virtual_desktop_macos(state, back);
 
     else if (other->os == WINDOWS && other->screen_count > 1)
-        push_to_far_side(state, back);
+        push_to_far_side(state, other, back);
 
     other->screen_index   = other->screen_count;
     state->relative_mouse = (other->os == WINDOWS && other->screen_count > 1);
