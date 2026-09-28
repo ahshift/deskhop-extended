@@ -90,6 +90,8 @@ configuration.</em></p>
   and on Linux, one screen the size of the whole desktop.
   [fb83521](https://github.com/mglushko/deskhop-extended/commit/fb83521)
 
+<p align="center"><img src="img/config-uniform.png" alt="The Uniform speed switch, what it does, and the speed it sets for every screen"></p>
+
 - **The status LED can be told to go dark** - the LED marking the active board, a light on all
   night if your desk shares a room with a bed, can now put itself out after a set idle time, a set
   time since the output last changed, or both on their own timers. Off by default, and config

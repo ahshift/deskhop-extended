@@ -8,10 +8,11 @@ prose and is easier shown than told:
     img/config-swap.png            the output bar and its Swap control
     img/config-dtap.png            the edge double-tap group
     img/config-led.png             the status LED mode and its two timers
+    img/config-uniform.png         the uniform speed switch and the speed it sets
     img/config-hotkeys.png         the shortcut list
     img/config-backup.png          the export panel
 
-All six come out of one load of webconfig/config.htm - the shipped self-extracting artifact, not the unpacked
+All seven come out of one load of webconfig/config.htm - the shipped self-extracting artifact, not the unpacked
 source - in headless Chromium and drives it into its connected state with a sample
 configuration, since nothing can pair over WebHID from a build machine. The firmware
 version comes from CMakeLists.txt and the checksum from build/deskhop.crc, so both are
@@ -117,6 +118,15 @@ BOXES = {
         const bottom = label.nextElementSibling.getBoundingClientRect();
         return {x: top.x, y: top.y, width: bottom.width, height: bottom.bottom - top.y};
     }""",
+    # Heading through group again: the switch, what it does and the speed it sets. Uniform
+    # speed is on in VALUES, so the slider is live rather than greyed out.
+    "config-uniform": """() => {
+        const label = [...document.querySelectorAll('.shared-in .lbl')]
+            .find(e => e.textContent === 'Uniform speed');
+        const top = label.getBoundingClientRect();
+        const bottom = label.nextElementSibling.getBoundingClientRect();
+        return {x: top.x, y: top.y, width: bottom.width, height: bottom.bottom - top.y};
+    }""",
     # The rows on their own, not the whole group: the two paragraphs above them explaining
     # Pick are prose the README already carries, and they run the shot to twice the height.
     # All twelve rows are in the frame, since that is the part worth seeing.
@@ -182,8 +192,8 @@ VALUES = {
     # and 107 (uniform speed) are this fork's additions; 87 is which output the page draws
     # on the left.
     71: 0, 72: 1, 73: 1, 75: 0, 76: 0, 77: 0, 83: 1, 84: 300, 85: 1000, 87: 0, 105: 0,
-    # Uniform speed (106) on, so the resolution pickers on the screens in the page shot read
-    # as live rather than dimmed, at the 100 percent it starts from (107).
+    # Uniform speed (106) on, so the resolution pickers under the screens in the page shot and
+    # its own group read as live rather than dimmed, at the 100 percent it starts from (107).
     106: 1, 107: 100,
     # Status LED: both timers, so the LED stays lit while that computer is being used and
     # for a moment after a switch. Mode 3 is also the one that poses the section best -
