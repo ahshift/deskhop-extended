@@ -123,6 +123,13 @@ configuration.</em></p>
   `HID_KEY_F24`, on the grounds that few keyboards have one. Config mode is the one that cannot
   be turned off, for the same reason it cannot be reassigned.
   [a80bfc8](https://github.com/mglushko/deskhop-extended/commit/a80bfc8)
+- **Recording a shortcut no longer runs the old one** - the board ran any combination it already
+  had before the page could record it, and swallowed it. Pressing Switch output's own combination
+  moved the keyboard to the other computer, and the page, never seeing the key that completed it,
+  refused with *needs a key* or kept only the modifiers. That included a shortcut already turned
+  off on the page, since nothing reaches the device before Save. While the page is open and the
+  keyboard types into its computer, only config mode's combination runs now, and saved shortcuts
+  take effect once you press Exit.
 
 Wiping the configuration has no shortcut here at all - upstream's `Right Shift + F12 + D` is gone,
 since a combination that erases every setting is too easy to reach by accident. Wipe Config on the

@@ -345,6 +345,16 @@ hotkey_combo_t *check_all_hotkeys(hid_keyboard_report_t *report, device_t *state
     if (check_specific_hotkey(hotkeys[HOTKEY_CONFIG_IDX], report))
         return &hotkeys[HOTKEY_CONFIG_IDX];
 
+    /* The config page records a shortcut from the keystrokes that reach it, and a report an
+       entry answers is swallowed on the way. So while this board is in config mode and
+       typing into the computer the page runs on, nothing else answers and every combination
+       reaches the page as ordinary keys. Otherwise pressing one the board already has would
+       run it instead, including one the page has just turned off or moved, since nothing is
+       sent before Save. While it types into the other computer nothing can be recording, so
+       the table answers as usual, and Switch output can bring the keyboard back. */
+    if (state->config_mode_active && CURRENT_BOARD_IS_ACTIVE_OUTPUT)
+        return NULL;
+
     for (int n = 0; n < ARRAY_SIZE(hotkeys); n++) {
         /* Read once and matched as a copy, so a rewrite landing mid-loop cannot show this
            one entry and then another. */
