@@ -113,9 +113,11 @@ configuration.</em></p>
   `Left Ctrl + Right Shift + C + O`. It is the only combination that opens the page, and the page
   is the only way to undo a shortcut, so nothing else can be set to it and it is checked before
   the rest. Two shortcuts cannot share a combination either, since only the first of them would
-  ever work, and only slow mouse may be modifiers with no key: a combination like that triggers
-  on anything typed while those modifiers are held, and one set on an early action used to take
-  over every action below it.
+  ever work, nor can one contain the whole of another that is checked ahead of it, since pressing
+  it would run that one instead. Only slow mouse may be modifiers with no key: a combination like
+  that triggers on anything typed while those modifiers are held, and one set on an early action
+  used to take over every action below it. And none may be a single key with no modifier, which
+  would take that key away from everything typed.
   [2ac2c87](https://github.com/mglushko/deskhop-extended/commit/2ac2c87)
 - **An edit waits for Save** - every control sent its value to the device the moment it changed,
   and Save only wrote it to flash. For a shortcut that meant the new combination started working
@@ -140,10 +142,12 @@ configuration.</em></p>
   [0cfc1a7](https://github.com/mglushko/deskhop-extended/commit/0cfc1a7)
 - **A shortcut can be turned off** - press **Off** on any of the eleven settable rows and that
   shortcut stops working. The row reads *Disabled*, **Default** brings it back, and the
-  combination it gave up is free for another shortcut to take. There was no way to do this
-  before: upstream's suggestion was to rebuild the firmware with the combination pointed at
-  `HID_KEY_F24`, on the grounds that few keyboards have one. Config mode is the one that cannot
-  be turned off, for the same reason it cannot be reassigned.
+  combination it gave up is free for another shortcut to take. If one has taken it by then,
+  Default puts that one back on its own default as well and says so, which is what Save would
+  do on the board anyway. There was no way to do this before: upstream's suggestion was to
+  rebuild the firmware with the combination pointed at `HID_KEY_F24`, on the grounds that few
+  keyboards have one. Config mode is the one that cannot be turned off, for the same reason it
+  cannot be reassigned.
   [a80bfc8](https://github.com/mglushko/deskhop-extended/commit/a80bfc8)
 - **Recording a shortcut no longer runs the old one** - the board ran any combination it already
   had before the page could record it, and swallowed it. Pressing Switch output's own combination
