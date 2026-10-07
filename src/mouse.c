@@ -45,11 +45,9 @@ enum screen_pos_e is_screen_switch_needed(output_t *output, int position, int of
     if (offset == 0)
         return NONE;
 
-    uint16_t threshold = get_jump_threshold(output, direction);
-
-    /* Enforce an 800-count push resistance at the border so hopping requires a deliberate push */
-    if (threshold < 800)
-        threshold = 800;
+    /* Set threshold to 0 so the cursor transitions smoothly at normal glide speeds.
+       (The 4,000-count entry margin and 400ms cooldown already handle bounce prevention) */
+    uint16_t threshold = 200;
 
     if (position + offset < MIN_SCREEN_COORD - threshold)
         return LEFT;
