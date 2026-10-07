@@ -688,8 +688,12 @@ void process_mouse_report(uint8_t *raw_report, int len, uint8_t itf, hid_interfa
     if (state->local_mouse_buttons != previous_local)
         send_value(state->local_mouse_buttons, MOUSE_BUTTONS_MSG);
 
-    /* Calculate and update mouse pointer movement. */
-    enum screen_pos_e switch_direction = update_mouse_position(state, &values);
+    /* Freeze absolute screen coordinate tracking while LMB/RMB is held or in gaming mode */
+    bool button_held = (values.buttons & 0x03) != 0;
+    enum screen_pos_e switch_direction = NONE;
+    if (!button_held && !state->gaming_mode) {
+    switch_direction = update_mouse_position(state, &values);
+    }
 
     /* Create the report for the output PC based on the updated values */
     mouse_report_t report = create_mouse_report(state, &values);
