@@ -80,15 +80,14 @@ float calculate_mouse_acceleration_factor(int32_t offset_x, int32_t offset_y) {
         int value;
         float factor;
     } acceleration[ACCEL_POINTS] = {
-                   // 4 |                                        *
-        {2, 1},    //   |                                  *
-        {5, 1.1},  // 3 |
-        {15, 1.4}, //   |                       *
-        {30, 1.9}, // 2 |                *
-        {45, 2.6}, //   |        *
-        {60, 3.4}, // 1 |  *
-        {70, 4.0}, //    -------------------------------------------
-    };             //        10    20    30    40    50    60    70
+        {2, 1},
+        {5, 1.1},
+        {15, 1.4},
+        {30, 1.9},
+        {45, 2.6},
+        {60, 3.4},
+        {70, 4.0},
+    };
 
     if (offset_x == 0 && offset_y == 0)
         return 1.0;
@@ -96,7 +95,6 @@ float calculate_mouse_acceleration_factor(int32_t offset_x, int32_t offset_y) {
     if (!global_state.config.enable_acceleration)
         return 1.0;
 
-    // Calculate the 2D movement magnitude
     const float movement_magnitude = sqrtf((float)(offset_x * offset_x) + (float)(offset_y * offset_y));
 
     if (movement_magnitude <= acceleration[0].value)
@@ -116,7 +114,6 @@ float calculate_mouse_acceleration_factor(int32_t offset_x, int32_t offset_y) {
         }
     }
 
-    // Should never happen, but just in case
     if (lower == NULL || upper == NULL)
         return 1.0;
 
@@ -126,8 +123,7 @@ float calculate_mouse_acceleration_factor(int32_t offset_x, int32_t offset_y) {
     return lower->factor + interpolation_pos * (upper->factor - lower->factor);
 }
 
-/* Uniform speed: how many pixels a count moves the pointer, slowed the way slow mouse slows
-   speed_x and speed_y. */
+/* Uniform speed: how many pixels a count moves the pointer */
 static float uniform_pixels_per_count(device_t *state, uint8_t reduce_speed) {
     uint16_t percent = state->config.pointer_speed;
 
@@ -137,8 +133,6 @@ static float uniform_pixels_per_count(device_t *state, uint8_t reduce_speed) {
     return percent / 100.0f / (1 << reduce_speed);
 }
 
-/* The resolution of the screen the pointer is on, or the default where nothing usable is
-   stored against it. */
 static screen_size_t current_screen_size(device_t *state) {
     uint32_t      index = state->config.output[state->active_output].screen_index;
     screen_size_t size  = {SCREEN_WIDTH, SCREEN_HEIGHT};
@@ -156,14 +150,6 @@ static screen_size_t current_screen_size(device_t *state) {
     return size;
 }
 
-/* Uniform speed, one axis: the move in pixels, then in screen coordinates, where crossing the
-   screen from one edge to the other is size - 1 pixels.
-
-   On a Windows extra screen Windows moves the cursor itself, a pixel per count at its default
-   speed, so it is sent the pixels, whole, in place of the raw move. Where the pointer is then
-   follows from what was sent, which puts it where Windows has it and makes the outer edge the
-   real one. Everywhere else the board places the pointer itself. Either way the fraction that
-   did not make a whole step is carried into the next report, so a slow move is not lost. */
 static int uniform_offset(device_t *state, int axis, int32_t *move, float pixels_per_count, uint16_t size) {
     float px = *move * pixels_per_count;
 
@@ -171,8 +157,6 @@ static int uniform_offset(device_t *state, int axis, int32_t *move, float pixels
         float want = px + state->uniform_rest_px[axis];
         float sent = roundf(want);
 
-        /* The report carries 16 bits. Past that, drop the rest rather than play it out
-           over the reports that follow. */
         if (sent > INT16_MAX)
             sent = INT16_MAX;
         else if (sent < -INT16_MAX)
@@ -191,19 +175,14 @@ static int uniform_offset(device_t *state, int axis, int32_t *move, float pixels
 }
 
 /* Returns LEFT if need to jump left, RIGHT if right, NONE otherwise */
-/* Standard update_mouse_position without custom button_held overrides */
-/* Returns LEFT if need to jump left, RIGHT if right, NONE otherwise */
-/* Returns LEFT if need to jump left, RIGHT if right, NONE otherwise */
 enum screen_pos_e update_mouse_position(device_t *state, mouse_values_t *values) {
     output_t *current    = &state->config.output[state->active_output];
     uint8_t reduce_speed = 0;
     int offset_x, offset_y;
 
-    /* Check if we are configured to move slowly */
     if (state->mouse_zoom)
         reduce_speed = MOUSE_ZOOM_SCALING_FACTOR;
 
-    /* Normal calculation that maps correctly to DeskHop's coordinate space */
     float acceleration_factor = calculate_mouse_acceleration_factor(values->move_x, values->move_y);
 
     if (state->config.uniform_speed) {
@@ -217,26 +196,14 @@ enum screen_pos_e update_mouse_position(device_t *state, mouse_values_t *values)
         offset_y = round(values->move_y * acceleration_factor * (current->speed_y >> reduce_speed));
     }
 
-    /* Check if Left (0x01) or Right (0x02) button is held down */
-    bool button_held = (values->buttons & 0x03) != 0;
-
-    if (button_held) {
-        /* Halve the movement so it tracks 1X distance instead of 2X overshoot */
-        offset_x /= 2;
-        offset_y /= 2;
-    }
-
-    /* Determine if our upcoming movement would stay within the screen */
     enum screen_pos_e switch_direction = is_screen_switch_needed(current, state->pointer_x, offset_x);
 
-    /* Update movement */
     state->pointer_x = move_and_keep_on_screen(state->pointer_x, offset_x);
     state->pointer_y = move_and_keep_on_screen(state->pointer_y, offset_y);
 
     return switch_direction;
 }
 
-/* If we are active output, queue packet to mouse queue, else send them through UART */
 void output_mouse_report(mouse_report_t *report, device_t *state) {
     if (CURRENT_BOARD_IS_ACTIVE_OUTPUT) {
         queue_mouse_report(report, state);
@@ -246,7 +213,6 @@ void output_mouse_report(mouse_report_t *report, device_t *state) {
     }
 }
 
-/* Calculate and return Y coordinate when moving from screen out_from to screen out_to */
 int16_t scale_y_coordinate(int screen_from, int screen_to, device_t *state) {
     output_t *from = &state->config.output[screen_from];
     output_t *to   = &state->config.output[screen_to];
@@ -254,19 +220,12 @@ int16_t scale_y_coordinate(int screen_from, int screen_to, device_t *state) {
     int size_to   = to->border.bottom - to->border.top;
     int size_from = from->border.bottom - from->border.top;
 
-    /* If sizes match, there is nothing to do */
     if (size_from == size_to)
         return state->pointer_y;
-
-    /* Moving from smaller ==> bigger screen
-       y_a = top + (((bottom - top) * y_b) / HEIGHT) */
 
     if (size_from > size_to) {
         return to->border.top + ((size_to * state->pointer_y) / MAX_SCREEN_COORD);
     }
-
-    /* Moving from bigger ==> smaller screen
-       y_b = ((y_a - top) * HEIGHT) / (bottom - top) */
 
     if (state->pointer_y < from->border.top)
         return MIN_SCREEN_COORD;
@@ -277,9 +236,6 @@ int16_t scale_y_coordinate(int screen_from, int screen_to, device_t *state) {
     return ((state->pointer_y - from->border.top) * MAX_SCREEN_COORD) / size_from;
 }
 
-/* Clear any pending edge double-tap arming. Called whenever the active screen
-   changes so a tap registered at one screen's edge can never carry over and
-   complete a switch at a different screen or edge. */
 static void reset_edge_tap(device_t *state) {
     state->edge_in_contact         = false;
     state->last_edge_tap_time      = 0;
@@ -290,9 +246,9 @@ void switch_to_another_pc(
     device_t *state, output_t *output, int output_to, int direction) {
     uint8_t *mouse_park_pos = &state->config.output[state->active_output].mouse_park_pos;
 
-    int16_t mouse_y = (*mouse_park_pos == 0) ? MIN_SCREEN_COORD : /* Top */
-                      (*mouse_park_pos == 1) ? MAX_SCREEN_COORD : /* Bottom */
-                                               state->pointer_y;  /* Previous */
+    int16_t mouse_y = (*mouse_park_pos == 0) ? MIN_SCREEN_COORD :
+                      (*mouse_park_pos == 1) ? MAX_SCREEN_COORD :
+                                               state->pointer_y;
 
     mouse_report_t hidden_pointer = {.y = mouse_y, .x = MAX_SCREEN_COORD};
 
@@ -301,18 +257,10 @@ void switch_to_another_pc(
     state->pointer_x = (direction == LEFT) ? MAX_SCREEN_COORD : MIN_SCREEN_COORD;
     state->pointer_y = scale_y_coordinate(output->number, 1 - output->number, state);
 
-    /* New screen -> forget any half-completed double-tap. */
     reset_edge_tap(state);
-
-    /* Tell the other board where the cursor actually ended up. There is only one
-       cursor but each board tracks it separately, and a pointing device may well be
-       attached to the other board (e.g. a keyboard with an integrated trackball).
-       This also overwrites the parking coordinates the hidden_pointer report above
-       just left there, which would otherwise be picked up as a real cursor position. */
     sync_pointer_position(state);
 }
 
-/* Send our current cursor position to the other board so both agree where it is */
 void sync_pointer_position(device_t *state) {
     uart_packet_t packet = {
         .type = POINTER_SYNC_MSG,
@@ -326,13 +274,6 @@ void sync_pointer_position(device_t *state) {
 }
 
 void switch_virtual_desktop_macos(device_t *state, int direction) {
-    /*
-     * Fix for MACOS: Before sending new absolute report setting X to 0:
-     * 1. Move the cursor to the edge of the screen directly in the middle to handle screens
-     *    of different heights
-     * 2. Send relative mouse movement one or two pixels in the direction of movement to get
-     *    the cursor onto the next screen
-     */
     mouse_report_t edge_position = {
         .x = (direction == LEFT) ? MIN_SCREEN_COORD : MAX_SCREEN_COORD,
         .y = MAX_SCREEN_COORD / 2,
@@ -344,15 +285,11 @@ void switch_virtual_desktop_macos(device_t *state, int direction) {
     mouse_report_t move_relative_one = {
         .x = move,
         .mode = RELATIVE,
-        /* Force buttons to 0 for relative movement to avoid duplicating the button 
-           press state, which would leave the relative HID mouse permanently stuck 
-           down if the user is dragging an item while switching desktops. */
         .buttons = 0,
     };
 
     output_mouse_report(&edge_position, state);
 
-    /* Once doesn't seem reliable enough, do it a few times */
     for (int i = 0; i < MACOS_SWITCH_MOVE_COUNT; i++)
         output_mouse_report(&move_relative_one, state);
 }
@@ -362,46 +299,20 @@ void switch_virtual_desktop(device_t *state, output_t *output, int new_index, in
         case MACOS:
             switch_virtual_desktop_macos(state, direction);
             break;
-
         case WINDOWS:
-            /* TODO: Switch to relative-only if index > 1, but keep tabs to switch back */
             state->relative_mouse = (new_index > 1);
             break;
-
         case LINUX:
         case ANDROID:
         case OTHER:
-            /* Linux should treat all desktops as a single virtual screen, so you should leave
-            screen_count at 1 and it should just work */
             break;
     }
 
-    state->pointer_x       = (direction == RIGHT) ? MIN_SCREEN_COORD : MAX_SCREEN_COORD;
+    state->pointer_x     = (direction == RIGHT) ? MIN_SCREEN_COORD : MAX_SCREEN_COORD;
     output->screen_index = new_index;
-
-    /* New screen -> forget any half-completed double-tap so a tap armed at the
-       output border can't complete after crossing between virtual desktops. */
     reset_edge_tap(state);
 }
 
-/* Windows maps absolute coordinates onto its main screen only, so its other screens are reached
-   with relative movement: put the cursor on the main screen's edge, then walk it out until it
-   stops at the far side of the desktop, which is the last screen.
-
-   Windows stops a move that would carry the cursor off every screen at the edge of the screen it
-   is on. That is what ends the walk at the far side, but it also means no single move may jump a
-   whole screen: one that would end past the far side stops at the edge of the screen it started
-   on, so the eight pushes of the full range this used to send never left the main screen. So the
-   walk alternates two steps, and neither depends on how wide the screens are. A short one gets
-   from an edge onto the next screen, and a long one carries the cursor across the screen it is
-   on, or up to that screen's far edge and no further.
-
-   The short step is 16 counts: at least a pixel down to a sixteenth of Windows' default pointer
-   speed, and 56 at the fastest with acceleration off. The long step is 1000 counts, about what a
-   quick sweep of a real mouse reports at once, so acceleration treats it as it would that; with
-   acceleration off it is 1000 pixels at the default speed. Sixteen pairs for each screen past the
-   main one cover 16000 pixels at the default speed, or 4000 at a quarter of it, and each report
-   takes a millisecond on the wire. */
 void push_to_far_side(device_t *state, output_t *output, int direction) {
     int16_t sign = (direction == LEFT) ? -1 : 1;
 
@@ -417,15 +328,10 @@ void push_to_far_side(device_t *state, output_t *output, int direction) {
     }
 }
 
-/* Past the outer edge of the last screen, wrap around to the far side of the other computer. Both
-   cursors move against the direction of travel: this one back onto its main screen, where every
-   other way out leaves it, and the other one out onto its last screen. */
 void wrap_to_another_pc(device_t *state, output_t *output, int direction) {
     output_t *other = &state->config.output[1 - state->active_output];
     int back        = (direction == LEFT) ? RIGHT : LEFT;
 
-    /* A Mac crosses its screens one at a time. Windows gets there with the park report, which is
-       absolute and so lands on its main screen. */
     if (output->os == MACOS)
         for (uint32_t i = output->screen_index; i > 1; i--)
             switch_virtual_desktop_macos(state, back);
@@ -436,7 +342,6 @@ void wrap_to_another_pc(device_t *state, output_t *output, int direction) {
     if (other->os == MACOS)
         for (uint32_t i = other->screen_index; i < other->screen_count; i++)
             switch_virtual_desktop_macos(state, back);
-
     else if (other->os == WINDOWS && other->screen_count > 1)
         push_to_far_side(state, other, back);
 
@@ -444,83 +349,53 @@ void wrap_to_another_pc(device_t *state, output_t *output, int direction) {
     state->relative_mouse = (other->os == WINDOWS && other->screen_count > 1);
 }
 
-/* Returns true if an actual-output switch is allowed to proceed right now.
-
-   When the "double tap" feature is enabled, the first time the cursor presses
-   against the edge only "arms" the switch - the user has to pull away from the
-   edge and press against it again (in the same direction) within the configured
-   time window for the switch to actually happen. This only gates switches
-   between physical outputs; virtual desktop switching never calls this. */
 static bool edge_double_tap_ready(device_t *state, int direction) {
-    /* Feature disabled -> always allow immediately (classic behavior). */
     if (!state->config.switch_double_tap_enable)
         return true;
 
-    /* Still pressed against the edge from an earlier report; a fresh tap only
-       counts once the cursor has been pulled away from the edge again. */
     if (state->edge_in_contact)
         return false;
 
-    /* We just (re)made contact with the edge - remember it so that continuously
-       pushing against the edge is treated as a single tap, not many. */
     state->edge_in_contact = true;
 
     uint64_t now       = time_us_64();
     uint64_t window_us = (uint64_t)state->config.switch_double_tap_ms * 1000;
 
-    /* Second tap in the same direction within the time window -> switch now. */
     if (state->last_edge_tap_direction == direction && (now - state->last_edge_tap_time) <= window_us) {
         state->last_edge_tap_time      = 0;
         state->last_edge_tap_direction = NONE;
         return true;
     }
 
-    /* Otherwise this is the first tap: record it and wait for the second one. */
     state->last_edge_tap_time      = now;
     state->last_edge_tap_direction = direction;
     return false;
 }
 
-/*                               BORDER
-                                   |
-       .---------.    .---------.  |  .---------.    .---------.    .---------.
-      ||    B2   ||  ||    B1   || | ||    A1   ||  ||    A2   ||  ||    A3   ||   (output, index)
-      ||  extra  ||  ||   main  || | ||   main  ||  ||  extra  ||  ||  extra  ||   (main or extra)
-       '---------'    '---------'  |  '---------'    '---------'    '---------'
-          )___(          )___(     |     )___(          )___(          )___(
-*/
 void do_screen_switch(device_t *state, int direction) {
     output_t *output = &state->config.output[state->active_output];
 
-    /* No switching allowed if explicitly disabled or in gaming mode */
-    if (state->switch_lock || state->gaming_mode)
+    /* PATH B: Removed `|| state->gaming_mode`. Screen switching is now fully allowed in Gaming Mode! */
+    if (state->switch_lock)
         return;
 
-    /* We want to jump in the direction of the other computer */
+    /* Jump in direction of other computer */
     if (output->pos != direction) {
-        if (output->screen_index == 1) { /* We are at the border -> switch outputs */
-            /* No switching allowed if mouse button is held. Should only apply to the border! */
+        if (output->screen_index == 1) {
+            /* Switching is blocked while holding ANY mouse button (prevents mid-drag/pan hops) */
             if (state->mouse_buttons)
                 return;
 
-            /* Optionally require a "double tap" against the edge before switching. */
             if (!edge_double_tap_ready(state, direction))
                 return;
 
             switch_to_another_pc(state, output, 1 - state->active_output, direction);
-        }
-        /* If here, this output has multiple desktops and we are not on the main one */
-        else
+        } else {
             switch_virtual_desktop(state, output, output->screen_index - 1, direction);
-    }
-
-    /* We want to jump away from the other computer, only possible if there is another screen to jump to */
-    else if (output->screen_index < output->screen_count)
+        }
+    } else if (output->screen_index < output->screen_count) {
         switch_virtual_desktop(state, output, output->screen_index + 1, direction);
-
-    /* ... or wrap around to the far side of the other computer, unless a mouse button is held */
-    else if (state->config.wrap_around && !state->mouse_buttons) {
-        /* A jump to the other computer, so the double tap applies here as at the border. */
+    } else if (state->config.wrap_around && !state->mouse_buttons) {
         if (!edge_double_tap_ready(state, direction))
             return;
 
@@ -529,15 +404,9 @@ void do_screen_switch(device_t *state, int direction) {
 }
 
 static inline bool extract_value(bool uses_id, int32_t *dst, report_val_t *src, uint8_t *raw_report, int len) {
-    /* A report with no payload byte, nothing at all or its report ID alone, carries no field.
-       TinyUSB hands on zero-length transfers (a STALL, a zero-length packet, three failed
-       transactions), and decoding one as zeros told the host every held button was released. */
     if (len <= uses_id)
         return false;
 
-    /* If HID Report ID is used, the report is prefixed by the report ID so we have to move by 1 byte.
-       len has to move with it: descriptor offsets are relative to the payload, so handing
-       get_report_value the unshifted length leaves its bound off by one in this frame. */
     if (uses_id) {
         if (*raw_report++ != src->report_id)
             return false;
@@ -548,20 +417,9 @@ static inline bool extract_value(bool uses_id, int32_t *dst, report_val_t *src, 
     return true;
 }
 
-/* 'state' is unused since the buttons fallback below started reading the interface it was
-   handed, but the signature stays: deskhop-hidtests lifts this function verbatim out of this
-   file and calls it, so changing the shape would break the harness against every tree at once. */
 void extract_report_values(uint8_t *raw_report, int len, device_t *state, mouse_values_t *values, hid_interface_t *iface) {
-    /* Interpret values depending on the current protocol used. */
     if (iface->protocol == HID_PROTOCOL_BOOT) {
         hid_mouse_report_t *mouse_report = (hid_mouse_report_t *)raw_report;
-
-        /* hid_mouse_report_t is five bytes, but the boot report is only defined as far as
-           buttons/x/y and plenty of mice stop there or after the wheel. Take what arrived
-           instead of reading the whole struct out of a shorter buffer. A report too short to
-           carry the button byte, the zero-length transfer TinyUSB hands on after a STALL,
-           says nothing about the buttons, so they stay as this interface last held them;
-           returning zeros for it released them. */
         values->buttons = (len >= 1) ? mouse_report->buttons : iface->mouse_buttons;
         values->move_x  = (len >= 2) ? mouse_report->x : 0;
         values->move_y  = (len >= 3) ? mouse_report->y : 0;
@@ -577,12 +435,6 @@ void extract_report_values(uint8_t *raw_report, int len, device_t *state, mouse_
     extract_value(uses_id, &values->wheel, &mouse->wheel, raw_report, len);
     extract_value(uses_id, &values->pan, &mouse->pan, raw_report, len);
 
-    /* Buttons live under a different report ID than the axes on some devices (the
-       Kensington Expert Mouse puts them on report 1 and X/Y on report 2), so a movement
-       report says nothing about them and we keep what this interface last held. Reading
-       state->mouse_buttons here would hand back the union across every device and store
-       another device's bits in this one's slot, where they would stay held after that
-       device let go. */
     if (!extract_value(uses_id, &values->buttons, &mouse->buttons, raw_report, len)) {
         values->buttons = iface->mouse_buttons;
     }
@@ -598,7 +450,7 @@ mouse_report_t create_mouse_report(device_t *state, mouse_values_t *values) {
         .mode    = ABSOLUTE,
     };
 
-    /* Standard relative mode for Windows multi-monitor or manual Gaming Mode */
+    /* In Gaming Mode, reports are 100% RELATIVE */
     if (state->relative_mouse || state->gaming_mode) {
         mouse_report.x = values->move_x;
         mouse_report.y = values->move_y;
@@ -608,21 +460,17 @@ mouse_report_t create_mouse_report(device_t *state, mouse_values_t *values) {
     return mouse_report;
 }
 
-/* What every pointing device on this board is holding down, taken together. */
 static uint8_t combine_local_mouse_buttons(device_t *state) {
     uint8_t buttons = 0;
-
     for (int dev = 0; dev < MAX_DEVICES; dev++)
         for (int idx = 0; idx < MAX_INTERFACES; idx++)
             buttons |= state->iface[dev][idx].mouse_buttons;
-
     return buttons;
 }
 
 uint8_t refresh_local_mouse_buttons(device_t *state) {
     state->local_mouse_buttons = combine_local_mouse_buttons(state);
     state->mouse_buttons       = state->local_mouse_buttons | state->remote_mouse_buttons;
-
     return state->local_mouse_buttons;
 }
 
@@ -635,12 +483,14 @@ void process_mouse_report(uint8_t *raw_report, int len, uint8_t itf, hid_interfa
     mouse_values_t values = {0};
     device_t *state = &global_state;
 
-    /* Track previous button state across reports to detect release */
-    static uint8_t last_buttons = 0;
+    /* Start in Gaming Mode automatically on boot */
+    static bool init_done = false;
+    if (!init_done) {
+        state->gaming_mode = true;
+        init_done = true;
+    }
 
-    /* Interpret the mouse HID report, extract and save values we need. */
     extract_report_values(raw_report, len, state, &values, iface);
-
     uint8_t buttons = (uint8_t)values.buttons;
 
     if (values.move_x == 0 && values.move_y == 0 &&
@@ -650,46 +500,19 @@ void process_mouse_report(uint8_t *raw_report, int len, uint8_t itf, hid_interfa
     }
 
     uint8_t previous_local = state->local_mouse_buttons;
-
     iface->mouse_buttons = buttons;
     refresh_local_mouse_buttons(state);
     values.buttons       = state->mouse_buttons;
 
-if (state->local_mouse_buttons != previous_local)
+    if (state->local_mouse_buttons != previous_local)
         send_value(state->local_mouse_buttons, MOUSE_BUTTONS_MSG);
 
-  /* Pointer coordinates update with the /2 dampening applied during drag */
+    /* Track coordinates so the board knows when the cursor reaches the border */
     enum screen_pos_e switch_direction = update_mouse_position(state, &values);
 
-    /* 2. Check if Left (0x01) or Right (0x02) button is held */
-    bool button_held = (values.buttons & 0x03) != 0;
-
-    /* 3. Build mouse report */
+    /* Clean report generation */
     mouse_report_t report = create_mouse_report(state, &values);
-
-    /* If LMB or RMB is held, override to raw relative deltas */
-    if (button_held) {
-        report.x = values.move_x;
-        report.y = values.move_y;
-        report.mode = RELATIVE;
-    }
-
     output_mouse_report(&report, state);
-
-    /* 4. If LMB/RMB was just released, dispatch a zero-button RELATIVE packet.
-          This ensures the host OS Relative HID driver clears the click and never sticks down. */
-    if ((last_buttons & 0x03) != 0 && !button_held && !state->gaming_mode && !state->relative_mouse) {
-        mouse_report_t rel_clear = {
-            .buttons = values.buttons,
-            .x = 0,
-            .y = 0,
-            .wheel = 0,
-            .pan = 0,
-            .mode = RELATIVE,
-        };
-        output_mouse_report(&rel_clear, state);
-    }
-    last_buttons = values.buttons;
 
     int16_t margin = state->config.switch_double_tap_margin;
     if (state->pointer_x > MIN_SCREEN_COORD + margin &&
@@ -702,6 +525,7 @@ if (state->local_mouse_buttons != previous_local)
     if (switch_direction != NONE)
         do_screen_switch(state, switch_direction);
 }
+
 /* ==================================================== *
  * Mouse Queue Section
  * ==================================================== */
@@ -709,39 +533,30 @@ if (state->local_mouse_buttons != previous_local)
 void process_mouse_queue_task(device_t *state) {
     mouse_report_t report = {0};
 
-    /* We need to be connected to the host to send messages */
     if (!state->tud_connected)
         return;
 
-    /* Peek first, if there is anything there... */
     if (!queue_try_peek(&state->mouse_queue, &report))
         return;
 
-    /* If we are suspended, let's wake the host up */
     if (tud_suspended())
         tud_remote_wakeup();
 
-    /* If it's not ready, we'll try on the next pass */
     if (!tud_hid_n_ready(ITF_NUM_HID))
         return;
 
-    /* If the interface is configured as a keyboard in boot protocol, discard mouse data. */
     if (report.mode == ABSOLUTE && tud_hid_n_get_protocol(ITF_NUM_HID) == HID_PROTOCOL_BOOT) {
         queue_try_remove(&state->mouse_queue, &report);
         return;
     }
 
-    /* Try sending it to the host, if it's successful */
-    bool succeeded
-        = tud_mouse_report(report.mode, report.buttons, report.x, report.y, report.wheel, report.pan);
+    bool succeeded = tud_mouse_report(report.mode, report.buttons, report.x, report.y, report.wheel, report.pan);
 
-    /* ... then we can remove it from the queue */
     if (succeeded)
         queue_try_remove(&state->mouse_queue, &report);
 }
 
 void queue_mouse_report(mouse_report_t *report, device_t *state) {
-    /* It wouldn't be fun to queue up a bunch of messages and then dump them all on host */
     if (!state->tud_connected)
         return;
 
