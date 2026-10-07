@@ -200,18 +200,30 @@ enum screen_pos_e update_mouse_position(device_t *state, mouse_values_t *values)
     if (state->mouse_zoom)
         reduce_speed = MOUSE_ZOOM_SCALING_FACTOR;
 
-    /* Calculate movement */
-    float acceleration_factor = calculate_mouse_acceleration_factor(values->move_x, values->move_y);
+    /* Check if Left (0x01) or Right (0x02) button is held down */
+    bool button_held = (values->buttons & 0x03) != 0;
 
-    if (state->config.uniform_speed) {
-        float         pixels = uniform_pixels_per_count(state, reduce_speed) * acceleration_factor;
+    if (button_held) {
+        /* While in relative mode, map counts directly 1:1 to screen units.
+           This keeps DeskHop's internal coordinates perfectly in sync with the OS
+           cursor so there is ZERO snapping or jumping when the button is released. */
         screen_size_t screen = current_screen_size(state);
-
-        offset_x = uniform_offset(state, 0, &values->move_x, pixels, screen.width);
-        offset_y = uniform_offset(state, 1, &values->move_y, pixels, screen.height);
+        offset_x = roundf(values->move_x * ((float)MAX_SCREEN_COORD / (screen.width - 1)));
+        offset_y = roundf(values->move_y * ((float)MAX_SCREEN_COORD / (screen.height - 1)));
     } else {
-        offset_x = round(values->move_x * acceleration_factor * (current->speed_x >> reduce_speed));
-        offset_y = round(values->move_y * acceleration_factor * (current->speed_y >> reduce_speed));
+        /* Normal free-movement calculation with pointer speed and acceleration */
+        float acceleration_factor = calculate_mouse_acceleration_factor(values->move_x, values->move_y);
+
+        if (state->config.uniform_speed) {
+            float         pixels = uniform_pixels_per_count(state, reduce_speed) * acceleration_factor;
+            screen_size_t screen = current_screen_size(state);
+
+            offset_x = uniform_offset(state, 0, &values->move_x, pixels, screen.width);
+            offset_y = uniform_offset(state, 1, &values->move_y, pixels, screen.height);
+        } else {
+            offset_x = round(values->move_x * acceleration_factor * (current->speed_x >> reduce_speed));
+            offset_y = round(values->move_y * acceleration_factor * (current->speed_y >> reduce_speed));
+        }
     }
 
     /* Determine if our upcoming movement would stay within the screen */
