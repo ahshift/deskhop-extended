@@ -659,7 +659,7 @@ void process_mouse_report(uint8_t *raw_report, int len, uint8_t itf, hid_interfa
 if (state->local_mouse_buttons != previous_local)
         send_value(state->local_mouse_buttons, MOUSE_BUTTONS_MSG);
 
-    /* 1. Pointer coordinates always update (1:1 during drags) */
+  /* Pointer coordinates update with the /2 dampening applied during drag */
     enum screen_pos_e switch_direction = update_mouse_position(state, &values);
 
     /* 2. Check if Left (0x01) or Right (0x02) button is held */
