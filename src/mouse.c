@@ -586,8 +586,11 @@ mouse_report_t create_mouse_report(device_t *state, mouse_values_t *values) {
         .mode    = ABSOLUTE,
     };
 
-    /* Workaround for Windows multiple desktops */
-    if (state->relative_mouse || state->gaming_mode) {
+    /* Check if Left (0x01) or Right (0x02) button is actively held */
+    bool button_held = (values->buttons & 0x03) != 0;
+
+    /* Emit relative delta reports if in gaming mode, on secondary desktop, or button is held */
+    if (state->relative_mouse || state->gaming_mode || button_held) {
         mouse_report.x = values->move_x;
         mouse_report.y = values->move_y;
         mouse_report.mode = RELATIVE;
