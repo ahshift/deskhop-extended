@@ -192,29 +192,45 @@ static int uniform_offset(device_t *state, int axis, int32_t *move, float pixels
 
 /* Returns LEFT if need to jump left, RIGHT if right, NONE otherwise */
 /* Standard update_mouse_position without custom button_held overrides */
+/* Returns LEFT if need to jump left, RIGHT if right, NONE otherwise */
 enum screen_pos_e update_mouse_position(device_t *state, mouse_values_t *values) {
     output_t *current    = &state->config.output[state->active_output];
     uint8_t reduce_speed = 0;
     int offset_x, offset_y;
 
+    /* Check if we are configured to move slowly */
     if (state->mouse_zoom)
         reduce_speed = MOUSE_ZOOM_SCALING_FACTOR;
 
-    float acceleration_factor = calculate_mouse_acceleration_factor(values->move_x, values->move_y);
+    /* Check if Left (0x01) or Right (0x02) button is held down */
+    bool button_held = (values->buttons & 0x03) != 0;
 
-    if (state->config.uniform_speed) {
-        float         pixels = uniform_pixels_per_count(state, reduce_speed) * acceleration_factor;
-        screen_size_t screen = current_screen_size(state);
-
-        offset_x = uniform_offset(state, 0, &values->move_x, pixels, screen.width);
-        offset_y = uniform_offset(state, 1, &values->move_y, pixels, screen.height);
+    if (button_held) {
+        /* In relative mode, Windows moves the cursor 1:1 using raw counts.
+           By bypassing speed_x (which was doubling movement to 2x) and acceleration,
+           DeskHop tracks the exact 1x distance so the cursor lands with 0 snap on release. */
+        offset_x = values->move_x;
+        offset_y = values->move_y;
     } else {
-        offset_x = round(values->move_x * acceleration_factor * (current->speed_x >> reduce_speed));
-        offset_y = round(values->move_y * acceleration_factor * (current->speed_y >> reduce_speed));
+        /* Normal free-movement calculation with pointer speed and acceleration */
+        float acceleration_factor = calculate_mouse_acceleration_factor(values->move_x, values->move_y);
+
+        if (state->config.uniform_speed) {
+            float         pixels = uniform_pixels_per_count(state, reduce_speed) * acceleration_factor;
+            screen_size_t screen = current_screen_size(state);
+
+            offset_x = uniform_offset(state, 0, &values->move_x, pixels, screen.width);
+            offset_y = uniform_offset(state, 1, &values->move_y, pixels, screen.height);
+        } else {
+            offset_x = round(values->move_x * acceleration_factor * (current->speed_x >> reduce_speed));
+            offset_y = round(values->move_y * acceleration_factor * (current->speed_y >> reduce_speed));
+        }
     }
 
+    /* Determine if our upcoming movement would stay within the screen */
     enum screen_pos_e switch_direction = is_screen_switch_needed(current, state->pointer_x, offset_x);
 
+    /* Update movement */
     state->pointer_x = move_and_keep_on_screen(state->pointer_x, offset_x);
     state->pointer_y = move_and_keep_on_screen(state->pointer_y, offset_y);
 
@@ -640,21 +656,16 @@ void process_mouse_report(uint8_t *raw_report, int len, uint8_t itf, hid_interfa
     refresh_local_mouse_buttons(state);
     values.buttons       = state->mouse_buttons;
 
-    if (state->local_mouse_buttons != previous_local)
+if (state->local_mouse_buttons != previous_local)
         send_value(state->local_mouse_buttons, MOUSE_BUTTONS_MSG);
 
-    /* Check if Left (0x01) or Right (0x02) button is held down */
+    /* 1. Pointer coordinates always update (1:1 during drags) */
+    enum screen_pos_e switch_direction = update_mouse_position(state, &values);
+
+    /* 2. Check if Left (0x01) or Right (0x02) button is held */
     bool button_held = (values.buttons & 0x03) != 0;
 
-    /* Only advance absolute coordinates when moving freely.
-       While dragging/panning in relative mode, freeze internal coordinates so
-       DeskHop never overshoots or jumps when you release the button. */
-    enum screen_pos_e switch_direction = NONE;
-    if (!button_held && !state->gaming_mode) {
-        switch_direction = update_mouse_position(state, &values);
-    }
-
-    /* Create the base report */
+    /* 3. Build mouse report */
     mouse_report_t report = create_mouse_report(state, &values);
 
     /* If LMB or RMB is held, override to raw relative deltas */
@@ -666,8 +677,8 @@ void process_mouse_report(uint8_t *raw_report, int len, uint8_t itf, hid_interfa
 
     output_mouse_report(&report, state);
 
-    /* If LMB or RMB was released on this packet, flush a zero-button RELATIVE packet.
-       This ensures the OS relative driver registers release and never sticks down. */
+    /* 4. If LMB/RMB was just released, dispatch a zero-button RELATIVE packet.
+          This ensures the host OS Relative HID driver clears the click and never sticks down. */
     if ((last_buttons & 0x03) != 0 && !button_held && !state->gaming_mode && !state->relative_mouse) {
         mouse_report_t rel_clear = {
             .buttons = values.buttons,
