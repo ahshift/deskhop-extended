@@ -19,23 +19,22 @@
 #define WRAP_STEPS_PER_SCREEN 16
 #define ACCEL_POINTS 7
 
+/* Safety margin when landing on the other PC (~12% inside screen) to prevent ping-pong bounce */
+#define ENTRY_MARGIN 4000
+
 uint16_t get_jump_threshold(output_t *output, enum screen_pos_e direction) {
     const uint16_t NO_JUMP_THRESHOLD = 0;
 
-    /* With wrap-around, going away from the border on the last screen is a jump to another pc too */
     if (global_state.config.wrap_around && output->pos == direction &&
         output->screen_index >= output->screen_count)
         return global_state.config.jump_threshold;
 
-    /* If on non-main local screen, every possible switch is local */
     if (output->screen_index > 1)
         return NO_JUMP_THRESHOLD;
 
-    /* If on main screen but going away from the border, switch is local */
     if (output->pos == direction && output->screen_index == 1)
         return NO_JUMP_THRESHOLD;
 
-    /* ... in all other cases, switch is non-local (jump to another pc) */
     return global_state.config.jump_threshold;
 }
 
@@ -43,12 +42,14 @@ uint16_t get_jump_threshold(output_t *output, enum screen_pos_e direction) {
 enum screen_pos_e is_screen_switch_needed(output_t *output, int position, int offset) {
     enum screen_pos_e direction = (offset < 0) ? LEFT : RIGHT;
 
-    /* No position offset implies no switch needed. */
     if (offset == 0)
         return NONE;
 
-    /* Local switches (virtual desktop changes) have no gap, only cross-output jumps use threshold */
     uint16_t threshold = get_jump_threshold(output, direction);
+
+    /* Enforce an 800-count push resistance at the border so hopping requires a deliberate push */
+    if (threshold < 800)
+        threshold = 800;
 
     if (position + offset < MIN_SCREEN_COORD - threshold)
         return LEFT;
@@ -61,20 +62,15 @@ enum screen_pos_e is_screen_switch_needed(output_t *output, int position, int of
 
 /* Move mouse coordinate 'position' by 'offset', but don't fall off the screen */
 int32_t move_and_keep_on_screen(int position, int offset) {
-    /* Lowest we can go is 0 */
     if (position + offset < MIN_SCREEN_COORD)
         return MIN_SCREEN_COORD;
-
-    /* Highest we can go is MAX_SCREEN_COORD */
     else if (position + offset > MAX_SCREEN_COORD)
         return MAX_SCREEN_COORD;
 
-    /* We're still on screen, all good */
     return position + offset;
 }
 
-/* Implement basic mouse acceleration based on actual 2D movement magnitude.
-   Returns the acceleration factor to apply to both x and y components. */
+/* Implement basic mouse acceleration based on actual 2D movement magnitude */
 float calculate_mouse_acceleration_factor(int32_t offset_x, int32_t offset_y) {
     const struct curve {
         int value;
@@ -123,7 +119,6 @@ float calculate_mouse_acceleration_factor(int32_t offset_x, int32_t offset_y) {
     return lower->factor + interpolation_pos * (upper->factor - lower->factor);
 }
 
-/* Uniform speed: how many pixels a count moves the pointer */
 static float uniform_pixels_per_count(device_t *state, uint8_t reduce_speed) {
     uint16_t percent = state->config.pointer_speed;
 
@@ -192,8 +187,9 @@ enum screen_pos_e update_mouse_position(device_t *state, mouse_values_t *values)
         offset_x = uniform_offset(state, 0, &values->move_x, pixels, screen.width);
         offset_y = uniform_offset(state, 1, &values->move_y, pixels, screen.height);
     } else {
-        offset_x = round(values->move_x * acceleration_factor * (current->speed_x >> reduce_speed));
-        offset_y = round(values->move_y * acceleration_factor * (current->speed_y >> reduce_speed));
+        /* Dampen integration by /2.5f so cursor coordinate reaches border across full desk width */
+        offset_x = round((values->move_x * acceleration_factor * (current->speed_x >> reduce_speed)) / 2.5f);
+        offset_y = round((values->move_y * acceleration_factor * (current->speed_y >> reduce_speed)) / 2.5f);
     }
 
     enum screen_pos_e switch_direction = is_screen_switch_needed(current, state->pointer_x, offset_x);
@@ -254,7 +250,10 @@ void switch_to_another_pc(
 
     output_mouse_report(&hidden_pointer, state);
     set_active_output(state, output_to);
-    state->pointer_x = (direction == LEFT) ? MAX_SCREEN_COORD : MIN_SCREEN_COORD;
+
+    /* Land safely inside the new screen instead of directly on the border edge */
+    state->pointer_x = (direction == LEFT) ? (MAX_SCREEN_COORD - ENTRY_MARGIN)
+                                           : (MIN_SCREEN_COORD + ENTRY_MARGIN);
     state->pointer_y = scale_y_coordinate(output->number, 1 - output->number, state);
 
     reset_edge_tap(state);
@@ -375,14 +374,19 @@ static bool edge_double_tap_ready(device_t *state, int direction) {
 void do_screen_switch(device_t *state, int direction) {
     output_t *output = &state->config.output[state->active_output];
 
-    /* PATH B: Removed `|| state->gaming_mode`. Screen switching is now fully allowed in Gaming Mode! */
     if (state->switch_lock)
+        return;
+
+    /* 400ms debounce cooldown to prevent rapid ping-ponging across screens */
+    static uint64_t last_switch_time = 0;
+    uint64_t now = time_us_64();
+    if (now - last_switch_time < 400000)
         return;
 
     /* Jump in direction of other computer */
     if (output->pos != direction) {
         if (output->screen_index == 1) {
-            /* Switching is blocked while holding ANY mouse button (prevents mid-drag/pan hops) */
+            /* Block screen switching while holding any mouse button */
             if (state->mouse_buttons)
                 return;
 
@@ -390,16 +394,20 @@ void do_screen_switch(device_t *state, int direction) {
                 return;
 
             switch_to_another_pc(state, output, 1 - state->active_output, direction);
+            last_switch_time = now;
         } else {
             switch_virtual_desktop(state, output, output->screen_index - 1, direction);
+            last_switch_time = now;
         }
     } else if (output->screen_index < output->screen_count) {
         switch_virtual_desktop(state, output, output->screen_index + 1, direction);
+        last_switch_time = now;
     } else if (state->config.wrap_around && !state->mouse_buttons) {
         if (!edge_double_tap_ready(state, direction))
             return;
 
         wrap_to_another_pc(state, output, direction);
+        last_switch_time = now;
     }
 }
 
@@ -450,7 +458,6 @@ mouse_report_t create_mouse_report(device_t *state, mouse_values_t *values) {
         .mode    = ABSOLUTE,
     };
 
-    /* In Gaming Mode, reports are 100% RELATIVE */
     if (state->relative_mouse || state->gaming_mode) {
         mouse_report.x = values->move_x;
         mouse_report.y = values->move_y;
@@ -483,7 +490,6 @@ void process_mouse_report(uint8_t *raw_report, int len, uint8_t itf, hid_interfa
     mouse_values_t values = {0};
     device_t *state = &global_state;
 
-    /* Start in Gaming Mode automatically on boot */
     static bool init_done = false;
     if (!init_done) {
         state->gaming_mode = true;
@@ -507,10 +513,8 @@ void process_mouse_report(uint8_t *raw_report, int len, uint8_t itf, hid_interfa
     if (state->local_mouse_buttons != previous_local)
         send_value(state->local_mouse_buttons, MOUSE_BUTTONS_MSG);
 
-    /* Track coordinates so the board knows when the cursor reaches the border */
     enum screen_pos_e switch_direction = update_mouse_position(state, &values);
 
-    /* Clean report generation */
     mouse_report_t report = create_mouse_report(state, &values);
     output_mouse_report(&report, state);
 
