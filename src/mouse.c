@@ -193,6 +193,7 @@ static int uniform_offset(device_t *state, int axis, int32_t *move, float pixels
 /* Returns LEFT if need to jump left, RIGHT if right, NONE otherwise */
 /* Standard update_mouse_position without custom button_held overrides */
 /* Returns LEFT if need to jump left, RIGHT if right, NONE otherwise */
+/* Returns LEFT if need to jump left, RIGHT if right, NONE otherwise */
 enum screen_pos_e update_mouse_position(device_t *state, mouse_values_t *values) {
     output_t *current    = &state->config.output[state->active_output];
     uint8_t reduce_speed = 0;
@@ -202,29 +203,27 @@ enum screen_pos_e update_mouse_position(device_t *state, mouse_values_t *values)
     if (state->mouse_zoom)
         reduce_speed = MOUSE_ZOOM_SCALING_FACTOR;
 
+    /* Normal calculation that maps correctly to DeskHop's coordinate space */
+    float acceleration_factor = calculate_mouse_acceleration_factor(values->move_x, values->move_y);
+
+    if (state->config.uniform_speed) {
+        float         pixels = uniform_pixels_per_count(state, reduce_speed) * acceleration_factor;
+        screen_size_t screen = current_screen_size(state);
+
+        offset_x = uniform_offset(state, 0, &values->move_x, pixels, screen.width);
+        offset_y = uniform_offset(state, 1, &values->move_y, pixels, screen.height);
+    } else {
+        offset_x = round(values->move_x * acceleration_factor * (current->speed_x >> reduce_speed));
+        offset_y = round(values->move_y * acceleration_factor * (current->speed_y >> reduce_speed));
+    }
+
     /* Check if Left (0x01) or Right (0x02) button is held down */
     bool button_held = (values->buttons & 0x03) != 0;
 
     if (button_held) {
-        /* In relative mode, Windows moves the cursor 1:1 using raw counts.
-           By bypassing speed_x (which was doubling movement to 2x) and acceleration,
-           DeskHop tracks the exact 1x distance so the cursor lands with 0 snap on release. */
-        offset_x = values->move_x;
-        offset_y = values->move_y;
-    } else {
-        /* Normal free-movement calculation with pointer speed and acceleration */
-        float acceleration_factor = calculate_mouse_acceleration_factor(values->move_x, values->move_y);
-
-        if (state->config.uniform_speed) {
-            float         pixels = uniform_pixels_per_count(state, reduce_speed) * acceleration_factor;
-            screen_size_t screen = current_screen_size(state);
-
-            offset_x = uniform_offset(state, 0, &values->move_x, pixels, screen.width);
-            offset_y = uniform_offset(state, 1, &values->move_y, pixels, screen.height);
-        } else {
-            offset_x = round(values->move_x * acceleration_factor * (current->speed_x >> reduce_speed));
-            offset_y = round(values->move_y * acceleration_factor * (current->speed_y >> reduce_speed));
-        }
+        /* Halve the movement so it tracks 1X distance instead of 2X overshoot */
+        offset_x /= 2;
+        offset_y /= 2;
     }
 
     /* Determine if our upcoming movement would stay within the screen */
