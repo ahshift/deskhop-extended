@@ -586,11 +586,8 @@ mouse_report_t create_mouse_report(device_t *state, mouse_values_t *values) {
         .mode    = ABSOLUTE,
     };
 
-    /* Check if Left (0x01) or Right (0x02) button is held down */
-    bool button_held = (values->buttons & 0x03) != 0;
-
-    /* If gaming mode is active, or Windows multi-desktop secondary screen, or button is held */
-    if (state->relative_mouse || state->gaming_mode || button_held) {
+    /* Standard relative mode for Windows multi-monitor or manual Gaming Mode */
+    if (state->relative_mouse || state->gaming_mode) {
         mouse_report.x = values->move_x;
         mouse_report.y = values->move_y;
         mouse_report.mode = RELATIVE;
@@ -626,7 +623,7 @@ void process_mouse_report(uint8_t *raw_report, int len, uint8_t itf, hid_interfa
     mouse_values_t values = {0};
     device_t *state = &global_state;
 
-    /* Track previous button state across reports to detect release */
+    /* Tracks button state to cleanly catch the release frame */
     static uint8_t last_buttons = 0;
 
     /* Interpret the mouse HID report, extract and save values we need. */
@@ -649,17 +646,28 @@ void process_mouse_report(uint8_t *raw_report, int len, uint8_t itf, hid_interfa
     if (state->local_mouse_buttons != previous_local)
         send_value(state->local_mouse_buttons, MOUSE_BUTTONS_MSG);
 
-    /* Update pointer position normally */
+    /* 1. Pointer coordinates always update so both Picos stay in sync */
     enum screen_pos_e switch_direction = update_mouse_position(state, &values);
 
-    /* Create and send the mouse report */
+    /* 2. Check if Left (0x01) or Right (0x02) button is held */
+    bool button_held = (values.buttons & 0x03) != 0;
+
+    /* 3. Build mouse report */
     mouse_report_t report = create_mouse_report(state, &values);
+
+    /* If LMB or RMB is held, override to raw relative deltas */
+    if (button_held) {
+        report.x = values.move_x;
+        report.y = values.move_y;
+        report.mode = RELATIVE;
+    }
+
     output_mouse_report(&report, state);
 
-    /* If LMB or RMB was released on this packet, flush a zero-button RELATIVE report.
-       This guarantees the OS relative mouse driver registers button release and never sticks! */
-    if ((last_buttons & 0x03) != 0 && (values.buttons & 0x03) == 0 && !state->gaming_mode) {
-        mouse_report_t release_report = {
+    /* 4. If LMB/RMB was just released, dispatch a zero-button RELATIVE packet.
+          This ensures the host OS Relative HID driver clears the click and never sticks down. */
+    if ((last_buttons & 0x03) != 0 && !button_held && !state->gaming_mode && !state->relative_mouse) {
+        mouse_report_t rel_clear = {
             .buttons = values.buttons,
             .x = 0,
             .y = 0,
@@ -667,7 +675,7 @@ void process_mouse_report(uint8_t *raw_report, int len, uint8_t itf, hid_interfa
             .pan = 0,
             .mode = RELATIVE,
         };
-        output_mouse_report(&release_report, state);
+        output_mouse_report(&rel_clear, state);
     }
     last_buttons = values.buttons;
 
